@@ -39,17 +39,24 @@ app.use((err, req, res, next) => {
 });
 
 async function startServer() {
+  // Intentar Oracle (opcional — el servidor arranca aunque falle)
   try {
     await initializeOraclePool();
-    await connectMongo();
-
-    app.listen(PORT, () => {
-      console.log(`HRMS API ejecutandose en http://localhost:${PORT}`);
-    });
   } catch (error) {
-    console.error("No se pudo iniciar el servidor:", error.message);
-    process.exit(1);
+    console.warn("⚠️  Oracle no disponible, continuando sin él:", error.message);
   }
+
+  // MongoDB es requerido para las colecciones de preferencias/encuestas
+  try {
+    await connectMongo();
+  } catch (error) {
+    console.warn("⚠️  MongoDB no disponible:", error.message);
+  }
+
+  app.listen(PORT, () => {
+    console.log(`✅ HRMS API ejecutandose en http://localhost:${PORT}`);
+    console.log(`   Health check: http://localhost:${PORT}/api/health`);
+  });
 }
 
 async function gracefulShutdown() {

@@ -10,17 +10,24 @@ async function initializeOraclePool() {
     return;
   }
 
-  await oracledb.createPool({
+  const poolConfig = {
     user,
     password,
     connectString,
     poolMin: Number(process.env.ORACLE_POOL_MIN || 1),
     poolMax: Number(process.env.ORACLE_POOL_MAX || 5),
     poolIncrement: Number(process.env.ORACLE_POOL_INCREMENT || 1)
-  });
+  };
 
-  console.log("Pool Oracle inicializado");
+  // SYS requiere privilegio SYSDBA (como "SYS as sysdba" en SQL Developer)
+  if (user.toUpperCase() === "SYS") {
+    poolConfig.privilege = oracledb.SYSDBA;
+  }
+
+  await oracledb.createPool(poolConfig);
+  console.log(`Pool Oracle inicializado → ${user}@${connectString}`);
 }
+
 
 async function getOracleConnection() {
   return oracledb.getConnection();
