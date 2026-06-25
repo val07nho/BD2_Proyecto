@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HRMS - Reservas</title>
+    <link rel="stylesheet" href="assets/styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Modulo de Reservas</h1>
+      <nav>
+        <a href="dashboard.html">Dashboard</a>
+        <a href="huespedes.html">Huespedes</a>
+        <a href="habitaciones.html">Habitaciones</a>
+        <a href="reservas.html">Reservas</a>
+        <a href="facturas.html">Facturas</a>
+        <a href="preferencias.html">Preferencias</a>
+        <a href="encuestas.html">Encuestas</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="card">
+        <h3>Crear reserva</h3>
+        <form id="form-reserva">
+          <input name="fecha_ingreso" type="date" required />
+          <input name="fecha_salida" type="date" required />
+          <select name="estado" required>
+            <option value="Confirmada">Confirmada</option>
+            <option value="Pendiente">Pendiente</option>
+            <option value="Cancelada">Cancelada</option>
+            <option value="Finalizada">Finalizada</option>
+          </select>
+          <input name="id_huesped" type="number" placeholder="ID Huesped" required />
+          <input name="id_habitacion" type="number" placeholder="ID Habitacion" required />
+          <button type="submit">Guardar</button>
+          <button type="button" class="secondary" id="btn-cargar">Recargar tabla</button>
+        </form>
+      </section>
+
+      <section class="card" style="margin-top: 12px">
+        <h3>Lista de reservas</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Fecha Reserva</th>
+              <th>Ingreso</th>
+              <th>Salida</th>
+              <th>Estado</th>
+              <th>ID Huesped</th>
+              <th>ID Habitacion</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-reservas"></tbody>
+        </table>
+      </section>
+    </main>
+
+    <script src="assets/app.js"></script>
+    <script>
+      async function cargarReservas() {
+        const data = await fetchApi("/reservas");
+        renderTable("tbody-reservas", data, ["ID_RESERVA", "FECHA_RESERVA", "FECHA_INGRESO", "FECHA_SALIDA", "ESTADO", "ID_HUESPED", "ID_HABITACION"]);
+      }
+
+      attachSubmit("form-reserva", async (payload) => {
+        await fetchApi("/reservas", { method: "POST", body: JSON.stringify(payload) });
+        await cargarReservas();
+      });
+
+      document.getElementById("btn-cargar").addEventListener("click", cargarReservas);
+      cargarReservas();
+    </script>
+  </body>
+</html>

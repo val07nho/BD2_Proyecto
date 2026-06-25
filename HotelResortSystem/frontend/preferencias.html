@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HRMS - Preferencias</title>
+    <link rel="stylesheet" href="assets/styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Modulo de Preferencias (MongoDB)</h1>
+      <nav>
+        <a href="dashboard.html">Dashboard</a>
+        <a href="huespedes.html">Huespedes</a>
+        <a href="habitaciones.html">Habitaciones</a>
+        <a href="reservas.html">Reservas</a>
+        <a href="facturas.html">Facturas</a>
+        <a href="preferencias.html">Preferencias</a>
+        <a href="encuestas.html">Encuestas</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="card">
+        <h3>Guardar preferencia</h3>
+        <form id="form-preferencia">
+          <input name="idHuesped" type="number" placeholder="ID Huesped" required />
+          <input name="vista" placeholder="Vista (ej. Mar)" required />
+          <input name="tipoCama" placeholder="Tipo de cama" required />
+          <input name="dieta" placeholder="Dieta" required />
+          <select name="noFumador" required>
+            <option value="true">No fumador</option>
+            <option value="false">Fumador</option>
+          </select>
+          <input name="almohadasEspeciales" placeholder="Almohadas especiales" />
+          <button type="submit">Guardar</button>
+          <button type="button" class="secondary" id="btn-cargar">Recargar tabla</button>
+        </form>
+      </section>
+
+      <section class="card" style="margin-top: 12px">
+        <h3>Lista de preferencias</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>ID Huesped</th>
+              <th>Vista</th>
+              <th>Cama</th>
+              <th>Dieta</th>
+              <th>No fumador</th>
+              <th>Almohadas</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-preferencias"></tbody>
+        </table>
+      </section>
+    </main>
+
+    <script src="assets/app.js"></script>
+    <script>
+      async function cargarPreferencias() {
+        const data = await fetchApi("/preferencias");
+        renderTable("tbody-preferencias", data, ["idHuesped", "vista", "tipoCama", "dieta", "noFumador", "almohadasEspeciales"]);
+      }
+
+      attachSubmit("form-preferencia", async (payload) => {
+        await fetchApi("/preferencias", { method: "POST", body: JSON.stringify(payload) });
+        await cargarPreferencias();
+      });
+
+      document.getElementById("btn-cargar").addEventListener("click", cargarPreferencias);
+      cargarPreferencias();
+    </script>
+  </body>
+</html>

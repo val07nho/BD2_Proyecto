@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HRMS - Habitaciones</title>
+    <link rel="stylesheet" href="assets/styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Modulo de Habitaciones</h1>
+      <nav>
+        <a href="dashboard.html">Dashboard</a>
+        <a href="huespedes.html">Huespedes</a>
+        <a href="habitaciones.html">Habitaciones</a>
+        <a href="reservas.html">Reservas</a>
+        <a href="facturas.html">Facturas</a>
+        <a href="preferencias.html">Preferencias</a>
+        <a href="encuestas.html">Encuestas</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="card">
+        <h3>Registrar habitacion</h3>
+        <form id="form-habitacion">
+          <input name="numero_habitacion" placeholder="Numero" required />
+          <input name="tipo" placeholder="Tipo" required />
+          <input name="precio_noche" type="number" step="0.01" placeholder="Precio por noche" required />
+          <input name="capacidad" type="number" placeholder="Capacidad" required />
+          <select name="estado" required>
+            <option value="Disponible">Disponible</option>
+            <option value="Ocupada">Ocupada</option>
+            <option value="Mantenimiento">Mantenimiento</option>
+          </select>
+          <button type="submit">Guardar</button>
+          <button type="button" class="secondary" id="btn-cargar">Recargar tabla</button>
+        </form>
+      </section>
+
+      <section class="card" style="margin-top: 12px">
+        <h3>Lista de habitaciones</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Numero</th>
+              <th>Tipo</th>
+              <th>Precio</th>
+              <th>Capacidad</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-habitaciones"></tbody>
+        </table>
+      </section>
+    </main>
+
+    <script src="assets/app.js"></script>
+    <script>
+      async function cargarHabitaciones() {
+        const data = await fetchApi("/habitaciones");
+        renderTable("tbody-habitaciones", data, ["ID_HABITACION", "NUMERO_HABITACION", "TIPO", "PRECIO_NOCHE", "CAPACIDAD", "ESTADO"]);
+      }
+
+      attachSubmit("form-habitacion", async (payload) => {
+        await fetchApi("/habitaciones", { method: "POST", body: JSON.stringify(payload) });
+        await cargarHabitaciones();
+      });
+
+      document.getElementById("btn-cargar").addEventListener("click", cargarHabitaciones);
+      cargarHabitaciones();
+    </script>
+  </body>
+</html>
