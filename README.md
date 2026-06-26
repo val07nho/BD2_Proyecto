@@ -4,7 +4,7 @@ Proyecto de laboratorio para Base de Datos II (Oracle + MongoDB).
 
 ## Estructura
 
-- `frontend/` — Servidor Node.js/Express con 7 pantallas HTML.
+- `frontend/` — Aplicacion Angular (standalone + routing) con flujo por roles.
 - `backend/`  — API Node.js con rutas CRUD para Oracle y MongoDB.
 - `docs/`     — DER, modelo de documentos, scripts de creación y carga.
 
@@ -77,6 +77,32 @@ cd frontend
 npm run dev
 # Frontend disponible en http://localhost:3000
 ```
+
+## Flujo de autenticacion y roles (Angular)
+
+Landing -> Login/Registro (JWT) -> redireccion por rol:
+
+- `CLIENTE` -> `/cliente`
+- `ADMIN` -> `/administrador`
+- `GERENTE` -> `/gerente`
+
+Rutas Angular principales:
+
+- `src/app/landing/landing.routes.ts`
+- `src/app/auth/auth.routes.ts`
+- `src/app/cliente/cliente.routes.ts`
+- `src/app/administrador/administrador.routes.ts`
+- `src/app/gerente/gerente.routes.ts`
+
+El frontend mantiene la conexion al backend en `http://localhost:4000/api` por medio de `src/app/core/services/api.service.ts`.
+
+JWT:
+
+- Se envia automaticamente en `Authorization: Bearer <token>` con `src/app/core/interceptors/auth.interceptor.ts`.
+- Los guards `auth.guard` y `role.guard` protegen rutas por sesion y rol.
+
+Importante: El backend actual aun no incluye endpoints de autenticacion (`/api/auth/login`, `/api/auth/register`).
+La aplicacion Angular ya esta preparada para consumirlos en cuanto los agregues.
 
 ## URLs
 

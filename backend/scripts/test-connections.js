@@ -4,9 +4,9 @@ const oracledb = require("oracledb");
 const { MongoClient } = require("mongodb");
 
 async function testOracle() {
-  const user = process.env.ORACLE_USER;
-  const password = process.env.ORACLE_PASSWORD;
-  const connectString = process.env.ORACLE_CONNECT_STRING;
+  const user = (process.env.ORACLE_USER || "").trim();
+  const password = (process.env.ORACLE_PASSWORD || "").trim();
+  const connectString = (process.env.ORACLE_CONNECT_STRING || "").trim();
 
   if (!user || !password || !connectString) {
     console.log("[Oracle] Variables incompletas en .env");
@@ -15,7 +15,12 @@ async function testOracle() {
 
   let connection;
   try {
-    connection = await oracledb.getConnection({ user, password, connectString });
+    const options = { user, password, connectString };
+    if (user.toUpperCase() === "SYS") {
+      options.privilege = oracledb.SYSDBA;
+    }
+
+    connection = await oracledb.getConnection(options);
     await connection.execute("SELECT 1 FROM DUAL");
     console.log("[Oracle] Conexion exitosa");
     return true;

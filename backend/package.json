@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "nodemon server.js",
     "start": "node server.js",
-    "test:db": "node scripts/test-connections.js"
+    "test:db": "node scripts/test-connections.js",
+    "setup:mongo": "node scripts/setup-mongo.js"
   },
   "keywords": [
     "hrms",

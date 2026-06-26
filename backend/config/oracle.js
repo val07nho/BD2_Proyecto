@@ -1,9 +1,9 @@
 const oracledb = require("oracledb");
 
 async function initializeOraclePool() {
-  const user = process.env.ORACLE_USER;
-  const password = process.env.ORACLE_PASSWORD;
-  const connectString = process.env.ORACLE_CONNECT_STRING;
+  const user = (process.env.ORACLE_USER || "").trim();
+  const password = (process.env.ORACLE_PASSWORD || "").trim();
+  const connectString = (process.env.ORACLE_CONNECT_STRING || "").trim();
 
   if (!user || !password || !connectString) {
     console.warn("Variables Oracle incompletas. Se omite creacion de pool.");
