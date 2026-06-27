@@ -16,13 +16,32 @@ async function listHuespedes(req, res, next) {
 async function createHuesped(req, res, next) {
   let connection;
   try {
-    const { dni_pasaporte, nombres, apellidos, nacionalidad, telefono, correo } = req.body;
+    const {
+      id_usuario,
+      nombres,
+      apellidos,
+      tipo_documento,
+      numero_documento,
+      dni_pasaporte,
+      telefono,
+      correo,
+      nacionalidad
+    } = req.body;
     connection = await getOracleConnection();
 
     await connection.execute(
-      `INSERT INTO HUESPED (ID_HUESPED, DNI_PASAPORTE, NOMBRES, APELLIDOS, NACIONALIDAD, TELEFONO, CORREO)
-       VALUES (SEQ_HUESPED.NEXTVAL, :dni_pasaporte, :nombres, :apellidos, :nacionalidad, :telefono, :correo)`,
-      { dni_pasaporte, nombres, apellidos, nacionalidad, telefono, correo },
+      `INSERT INTO HUESPED (ID_HUESPED, ID_USUARIO, NOMBRES, APELLIDOS, TIPO_DOCUMENTO, NUMERO_DOCUMENTO, TELEFONO, CORREO, NACIONALIDAD)
+       VALUES (SEQ_HUESPED.NEXTVAL, :id_usuario, :nombres, :apellidos, :tipo_documento, :numero_documento, :telefono, :correo, :nacionalidad)`,
+      {
+        id_usuario: id_usuario || null,
+        nombres,
+        apellidos,
+        tipo_documento: tipo_documento || (dni_pasaporte ? "DNI" : null),
+        numero_documento: numero_documento || dni_pasaporte || null,
+        telefono: telefono || null,
+        correo: correo || null,
+        nacionalidad: nacionalidad || null
+      },
       { autoCommit: true }
     );
 
@@ -38,19 +57,41 @@ async function updateHuesped(req, res, next) {
   let connection;
   try {
     const { id } = req.params;
-    const { dni_pasaporte, nombres, apellidos, nacionalidad, telefono, correo } = req.body;
+    const {
+      id_usuario,
+      nombres,
+      apellidos,
+      tipo_documento,
+      numero_documento,
+      dni_pasaporte,
+      telefono,
+      correo,
+      nacionalidad
+    } = req.body;
     connection = await getOracleConnection();
 
     const result = await connection.execute(
       `UPDATE HUESPED
-       SET DNI_PASAPORTE = :dni_pasaporte,
+       SET ID_USUARIO = :id_usuario,
            NOMBRES = :nombres,
            APELLIDOS = :apellidos,
+           TIPO_DOCUMENTO = :tipo_documento,
+           NUMERO_DOCUMENTO = :numero_documento,
            NACIONALIDAD = :nacionalidad,
            TELEFONO = :telefono,
            CORREO = :correo
        WHERE ID_HUESPED = :id`,
-      { id: Number(id), dni_pasaporte, nombres, apellidos, nacionalidad, telefono, correo },
+      {
+        id: Number(id),
+        id_usuario: id_usuario || null,
+        nombres,
+        apellidos,
+        tipo_documento: tipo_documento || (dni_pasaporte ? "DNI" : null),
+        numero_documento: numero_documento || dni_pasaporte || null,
+        nacionalidad: nacionalidad || null,
+        telefono: telefono || null,
+        correo: correo || null
+      },
       { autoCommit: true }
     );
 

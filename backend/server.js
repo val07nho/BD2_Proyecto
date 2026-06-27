@@ -10,9 +10,14 @@ const huespedRoutes = require("./routes/huesped.routes");
 const habitacionRoutes = require("./routes/habitacion.routes");
 const reservaRoutes = require("./routes/reserva.routes");
 const facturaRoutes = require("./routes/factura.routes");
+const pagoRoutes = require("./routes/pago.routes");
 const eventoRoutes = require("./routes/evento.routes");
+const servicioRoutes = require("./routes/servicio.routes");
+const rolRoutes = require("./routes/rol.routes");
+const usuarioRoutes = require("./routes/usuario.routes");
 const preferenciaRoutes = require("./routes/preferencia.routes");
 const encuestaRoutes = require("./routes/encuesta.routes");
+const authRoutes = require("./routes/auth.routes");
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -25,11 +30,16 @@ app.get("/api/health", async (req, res) => {
   res.json({ status: "ok", service: "HRMS API" });
 });
 
+app.use("/api/auth", authRoutes);
+app.use("/api/roles", rolRoutes);
+app.use("/api/usuarios", usuarioRoutes);
 app.use("/api/huespedes", huespedRoutes);
 app.use("/api/habitaciones", habitacionRoutes);
 app.use("/api/reservas", reservaRoutes);
 app.use("/api/facturas", facturaRoutes);
+app.use("/api/pagos", pagoRoutes);
 app.use("/api/eventos", eventoRoutes);
+app.use("/api/servicios", servicioRoutes);
 app.use("/api/preferencias", preferenciaRoutes);
 app.use("/api/encuestas", encuestaRoutes);
 

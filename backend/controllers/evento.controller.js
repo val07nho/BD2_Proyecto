@@ -1,5 +1,13 @@
 const { getOracleConnection, outFormat } = require("../config/oracle");
 
+function normalizeEstado(estado) {
+  const value = String(estado || "A").toUpperCase();
+  if (["A", "I"].includes(value)) {
+    return value;
+  }
+  return "A";
+}
+
 async function listEventos(req, res, next) {
   let connection;
   try {
@@ -16,13 +24,20 @@ async function listEventos(req, res, next) {
 async function createEvento(req, res, next) {
   let connection;
   try {
-    const { nombre, descripcion, fecha_evento, costo } = req.body;
+    const { nombre, descripcion, fecha_evento, costo, cupos, estado } = req.body;
     connection = await getOracleConnection();
 
     await connection.execute(
-      `INSERT INTO EVENTO (ID_EVENTO, CODIGO_EVENTO, NOMBRE, DESCRIPCION, FECHA_EVENTO, COSTO)
-       VALUES (SEQ_EVENTO.NEXTVAL, 'EV-' || LPAD(SEQ_EVENTO.CURRVAL, 4, '0'), :nombre, :descripcion, TO_DATE(:fecha_evento, 'YYYY-MM-DD'), :costo)`,
-      { nombre, descripcion, fecha_evento, costo },
+      `INSERT INTO EVENTO (ID_EVENTO, NOMBRE, DESCRIPCION, FECHA_EVENTO, COSTO, CUPOS, ESTADO)
+       VALUES (SEQ_EVENTO.NEXTVAL, :nombre, :descripcion, TO_DATE(:fecha_evento, 'YYYY-MM-DD'), :costo, :cupos, :estado)`,
+      {
+        nombre,
+        descripcion,
+        fecha_evento,
+        costo,
+        cupos: cupos || null,
+        estado: normalizeEstado(estado)
+      },
       { autoCommit: true }
     );
 
@@ -38,7 +53,7 @@ async function updateEvento(req, res, next) {
   let connection;
   try {
     const { id } = req.params;
-    const { nombre, descripcion, fecha_evento, costo } = req.body;
+    const { nombre, descripcion, fecha_evento, costo, cupos, estado } = req.body;
     connection = await getOracleConnection();
 
     const result = await connection.execute(
@@ -46,9 +61,19 @@ async function updateEvento(req, res, next) {
        SET NOMBRE = :nombre,
            DESCRIPCION = :descripcion,
            FECHA_EVENTO = TO_DATE(:fecha_evento, 'YYYY-MM-DD'),
-           COSTO = :costo
+           COSTO = :costo,
+           CUPOS = :cupos,
+           ESTADO = :estado
        WHERE ID_EVENTO = :id`,
-      { id: Number(id), nombre, descripcion, fecha_evento, costo },
+      {
+        id: Number(id),
+        nombre,
+        descripcion,
+        fecha_evento,
+        costo,
+        cupos: cupos || null,
+        estado: normalizeEstado(estado)
+      },
       { autoCommit: true }
     );
 

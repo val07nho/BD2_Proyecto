@@ -50,6 +50,25 @@ export class AuthService {
     return this.normalizeRole(rawRole);
   }
 
+  getUserId(): number | null {
+    const token = this.getToken();
+    if (!token) return null;
+
+    const payload = this.decodeToken(token);
+    const sub = payload?.["sub"];
+    const id = Number(sub);
+    return Number.isFinite(id) ? id : null;
+  }
+
+  getUsername(): string | null {
+    const token = this.getToken();
+    if (!token) return null;
+
+    const payload = this.decodeToken(token);
+    const username = payload?.["username"];
+    return typeof username === "string" ? username : null;
+  }
+
   navigateByRole(role: UserRole | null) {
     if (role === "ADMIN") {
       this.router.navigate(["/administrador"]);

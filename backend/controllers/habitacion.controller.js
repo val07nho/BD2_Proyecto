@@ -1,10 +1,31 @@
 const { getOracleConnection, outFormat } = require("../config/oracle");
 
+function normalizeEstado(estado) {
+  const value = String(estado || "DISPONIBLE").toUpperCase();
+  if (["DISPONIBLE", "OCUPADA", "MANTENIMIENTO"].includes(value)) {
+    return value;
+  }
+  return "DISPONIBLE";
+}
+
 async function listHabitaciones(req, res, next) {
   let connection;
   try {
     connection = await getOracleConnection();
-    const result = await connection.execute("SELECT * FROM HABITACION ORDER BY ID_HABITACION", [], { outFormat });
+    const result = await connection.execute(
+      `SELECT
+         ID_HABITACION,
+         NUMERO AS NUMERO_HABITACION,
+         TIPO,
+         PRECIO_NOCHE,
+         CAPACIDAD,
+         INITCAP(ESTADO) AS ESTADO,
+         DESCRIPCION
+       FROM HABITACION
+       ORDER BY ID_HABITACION`,
+      [],
+      { outFormat }
+    );
     res.json(result.rows);
   } catch (error) {
     next(error);
@@ -16,13 +37,28 @@ async function listHabitaciones(req, res, next) {
 async function createHabitacion(req, res, next) {
   let connection;
   try {
-    const { numero_habitacion, tipo, precio_noche, capacidad, estado } = req.body;
+    const {
+      numero_habitacion,
+      numero,
+      tipo,
+      precio_noche,
+      capacidad,
+      estado,
+      descripcion
+    } = req.body;
     connection = await getOracleConnection();
 
     await connection.execute(
-      `INSERT INTO HABITACION (ID_HABITACION, NUMERO_HABITACION, TIPO, PRECIO_NOCHE, CAPACIDAD, ESTADO)
-       VALUES (SEQ_HABITACION.NEXTVAL, :numero_habitacion, :tipo, :precio_noche, :capacidad, :estado)`,
-      { numero_habitacion, tipo, precio_noche, capacidad, estado },
+      `INSERT INTO HABITACION (ID_HABITACION, NUMERO, TIPO, PRECIO_NOCHE, CAPACIDAD, ESTADO, DESCRIPCION)
+       VALUES (SEQ_HABITACION.NEXTVAL, :numero, :tipo, :precio_noche, :capacidad, :estado, :descripcion)`,
+      {
+        numero: numero || numero_habitacion,
+        tipo,
+        precio_noche,
+        capacidad,
+        estado: normalizeEstado(estado),
+        descripcion: descripcion || null
+      },
       { autoCommit: true }
     );
 
@@ -38,18 +74,35 @@ async function updateHabitacion(req, res, next) {
   let connection;
   try {
     const { id } = req.params;
-    const { numero_habitacion, tipo, precio_noche, capacidad, estado } = req.body;
+    const {
+      numero_habitacion,
+      numero,
+      tipo,
+      precio_noche,
+      capacidad,
+      estado,
+      descripcion
+    } = req.body;
     connection = await getOracleConnection();
 
     const result = await connection.execute(
       `UPDATE HABITACION
-       SET NUMERO_HABITACION = :numero_habitacion,
+       SET NUMERO = :numero,
            TIPO = :tipo,
            PRECIO_NOCHE = :precio_noche,
            CAPACIDAD = :capacidad,
-           ESTADO = :estado
+           ESTADO = :estado,
+           DESCRIPCION = :descripcion
        WHERE ID_HABITACION = :id`,
-      { id: Number(id), numero_habitacion, tipo, precio_noche, capacidad, estado },
+      {
+        id: Number(id),
+        numero: numero || numero_habitacion,
+        tipo,
+        precio_noche,
+        capacidad,
+        estado: normalizeEstado(estado),
+        descripcion: descripcion || null
+      },
       { autoCommit: true }
     );
 
