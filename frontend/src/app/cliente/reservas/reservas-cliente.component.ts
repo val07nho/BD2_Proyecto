@@ -166,7 +166,7 @@ interface Reserva {
                       <td>
                         <div class="row-actions">
                           <button class="action" type="button" (click)="editarReserva(r)" [disabled]="normalizarEstado(r.ESTADO) === 'CANCELADA' || normalizarEstado(r.ESTADO) === 'FINALIZADA'">Editar</button>
-                          <button class="action warn" type="button" (click)="cancelarReserva(r)" [disabled]="normalizarEstado(r.ESTADO) === 'CANCELADA' || normalizarEstado(r.ESTADO) === 'FINALIZADA'">Cancelar reserva</button>
+                          <button class="action warn" type="button" (click)="cancelarReserva(r)" [disabled]="normalizarEstado(r.ESTADO) !== 'PENDIENTE'">Cancelar reserva</button>
                           <button class="action success" type="button" (click)="finalizarReserva(r)" [disabled]="normalizarEstado(r.ESTADO) === 'CANCELADA' || normalizarEstado(r.ESTADO) === 'FINALIZADA'">Finalizar</button>
                         </div>
                       </td>
@@ -487,6 +487,10 @@ export class ReservasClienteComponent implements OnInit {
 
   cancelarReserva(r: Reserva): void {
     if (!this.idHuespedActual) return;
+    if (this.normalizarEstado(r.ESTADO) !== "PENDIENTE") {
+      this.error = "Solo puedes cancelar reservas en estado pendiente.";
+      return;
+    }
 
     const ok = confirm(`Se cancelara la reserva #${r.ID_RESERVA}. Deseas continuar?`);
     if (!ok) return;

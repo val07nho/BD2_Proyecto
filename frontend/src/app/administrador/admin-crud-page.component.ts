@@ -16,12 +16,14 @@ interface FieldDef {
 }
 
 interface ModuleConfig {
+  eyebrow: string;
   title: string;
   description: string;
   endpoint: string;
   idKey: string;
   columns: string[];
   fields: FieldDef[];
+  allowCreate?: boolean;
   fromRow?: (row: any) => Record<string, any>;
   toPayload?: (form: Record<string, any>) => Record<string, any>;
 }
@@ -38,8 +40,9 @@ function toDateInput(value: any): string {
 
 const MODULE_CONFIGS: Record<string, ModuleConfig> = {
   usuarios: {
+    eyebrow: "Gestion de accesos",
     title: "Usuarios",
-    description: "CRUD de usuarios y asignacion de rol.",
+    description: "Administra cuentas, roles y estado de acceso.",
     endpoint: "/usuarios",
     idKey: "ID_USUARIO",
     columns: ["ID_USUARIO", "USERNAME", "ROL", "ESTADO", "FECHA_CREACION"],
@@ -57,8 +60,9 @@ const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     })
   },
   roles: {
+    eyebrow: "Gestion de permisos",
     title: "Roles",
-    description: "CRUD de roles del sistema.",
+    description: "Administra los perfiles de acceso del sistema.",
     endpoint: "/roles",
     idKey: "ID_ROL",
     columns: ["ID_ROL", "NOMBRE", "DESCRIPCION"],
@@ -69,10 +73,12 @@ const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     fromRow: (row) => ({ nombre: row.NOMBRE || "", descripcion: row.DESCRIPCION || "" })
   },
   reservas: {
+    eyebrow: "Operacion hotelera",
     title: "Reservas",
-    description: "CRUD de reservas.",
+    description: "Consulta y actualiza reservas registradas por clientes.",
     endpoint: "/reservas",
     idKey: "ID_RESERVA",
+    allowCreate: false,
     columns: ["ID_RESERVA", "HUESPED", "NUMERO_HABITACION", "FECHA_INGRESO", "FECHA_SALIDA", "ESTADO", "TOTAL"],
     fields: [
       { key: "fecha_ingreso", label: "Fecha ingreso", type: "date", required: true },
@@ -96,8 +102,9 @@ const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     })
   },
   eventos: {
+    eyebrow: "Actividades del resort",
     title: "Eventos",
-    description: "CRUD de eventos.",
+    description: "Gestiona eventos y actividades disponibles.",
     endpoint: "/eventos",
     idKey: "ID_EVENTO",
     columns: ["ID_EVENTO", "NOMBRE", "FECHA_EVENTO", "COSTO", "CUPOS", "ESTADO"],
@@ -119,8 +126,9 @@ const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     })
   },
   servicios: {
+    eyebrow: "Catalogo operativo",
     title: "Servicios",
-    description: "CRUD de servicios.",
+    description: "Gestiona servicios disponibles para los huespedes.",
     endpoint: "/servicios",
     idKey: "ID_SERVICIO",
     columns: ["ID_SERVICIO", "NOMBRE", "PRECIO", "ESTADO", "DESCRIPCION"],
@@ -138,10 +146,12 @@ const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     })
   },
   facturas: {
+    eyebrow: "Facturacion",
     title: "Facturas",
-    description: "CRUD de facturas.",
+    description: "Consulta y actualiza comprobantes generados por reservas.",
     endpoint: "/facturas",
     idKey: "ID_FACTURA",
+    allowCreate: false,
     columns: ["ID_FACTURA", "ID_RESERVA", "FECHA_EMISION", "SUBTOTAL", "IGV", "TOTAL", "ESTADO_PAGO"],
     fields: [
       { key: "id_reserva", label: "ID Reserva", type: "number", required: true },
@@ -161,10 +171,12 @@ const MODULE_CONFIGS: Record<string, ModuleConfig> = {
     })
   },
   pagos: {
+    eyebrow: "Control financiero",
     title: "Pagos",
-    description: "CRUD de pagos.",
+    description: "Consulta y actualiza pagos asociados a facturas.",
     endpoint: "/pagos",
     idKey: "ID_PAGO",
+    allowCreate: false,
     columns: ["ID_PAGO", "ID_FACTURA", "FECHA_PAGO", "METODO_PAGO", "MONTO"],
     fields: [
       { key: "id_factura", label: "ID Factura", type: "number", required: true },
@@ -187,65 +199,45 @@ const MODULE_CONFIGS: Record<string, ModuleConfig> = {
   imports: [CommonModule, FormsModule],
   template: `
     <section class="crud-page">
+      <div class="breadcrumb">Administrador <span>/</span> {{ config?.title || 'Modulo' }}</div>
+
       <header class="head">
         <div>
+          <span class="eyebrow">{{ config?.eyebrow }}</span>
           <h2>{{ config?.title }}</h2>
           <p>{{ config?.description }}</p>
         </div>
-        <button class="btn primary" type="button" (click)="nuevo()">Nuevo</button>
+        @if (config?.allowCreate !== false) {
+          <button class="btn primary" type="button" (click)="abrirNuevo()">Nuevo registro</button>
+        }
       </header>
 
       @if (error) {
-        <p class="error">{{ error }}</p>
+        <div class="alert error">{{ error }}</div>
       }
       @if (message) {
-        <p class="message">{{ message }}</p>
+        <div class="alert success">{{ message }}</div>
       }
 
       @if (!config) {
-        <p>Modulo no configurado.</p>
+        <div class="empty-state"><p>Modulo no configurado.</p></div>
       } @else {
-        <div class="grid">
-          <article class="card form-card">
-            <h3>{{ editId ? 'Editar' : 'Crear' }} {{ config.title.toLowerCase() }}</h3>
-            <form (ngSubmit)="guardar()" class="form-grid">
-              @for (field of config.fields; track field.key) {
-                <label>
-                  {{ field.label }}
+        <section class="stats-row">
+          <article class="stat-card"><strong>{{ rows.length }}</strong><small>Total registros</small></article>
+          <article class="stat-card"><strong>{{ config.columns.length }}</strong><small>Columnas visibles</small></article>
+          <article class="stat-card"><strong>{{ config.allowCreate === false ? 'No' : 'Si' }}</strong><small>Creacion manual</small></article>
+        </section>
 
-                  @if (field.type === 'select') {
-                    <select [(ngModel)]="formModel[field.key]" [name]="field.key" [required]="field.required || false">
-                      <option [ngValue]="''">Selecciona...</option>
-                      @for (opt of field.options || []; track opt) {
-                        <option [value]="opt">{{ opt }}</option>
-                      }
-                    </select>
-                  } @else if (field.type === 'textarea') {
-                    <textarea rows="3" [(ngModel)]="formModel[field.key]" [name]="field.key" [required]="field.required || false"></textarea>
-                  } @else {
-                    <input
-                      [type]="field.type"
-                      [(ngModel)]="formModel[field.key]"
-                      [name]="field.key"
-                      [required]="field.required || false"
-                    />
-                  }
-                </label>
-              }
-
-              <div class="actions">
-                <button class="btn primary" type="submit" [disabled]="saving">{{ saving ? 'Guardando...' : (editId ? 'Actualizar' : 'Crear') }}</button>
-                <button class="btn ghost" type="button" (click)="nuevo()">Cancelar</button>
-              </div>
-            </form>
-          </article>
-
-          <article class="card table-card">
+        <article class="card table-card">
+          <div class="table-head">
             <h3>Listado</h3>
+            <button class="btn ghost" type="button" (click)="cargar()">Actualizar</button>
+          </div>
+
             @if (loading) {
-              <p>Cargando...</p>
+              <div class="empty-state"><p>Cargando registros...</p></div>
             } @else if (rows.length === 0) {
-              <p>Sin registros.</p>
+              <div class="empty-state"><p>Sin registros disponibles.</p></div>
             } @else {
               <div class="table-wrap">
                 <table>
@@ -265,7 +257,7 @@ const MODULE_CONFIGS: Record<string, ModuleConfig> = {
                         }
                         <td>
                           <div class="row-actions">
-                            <button class="btn tiny" type="button" (click)="editar(row)">Editar</button>
+                            <button class="icon-action" type="button" (click)="editar(row)">Editar</button>
                             <button class="btn tiny danger" type="button" (click)="eliminar(row)">Eliminar</button>
                           </div>
                         </td>
@@ -275,6 +267,45 @@ const MODULE_CONFIGS: Record<string, ModuleConfig> = {
                 </table>
               </div>
             }
+        </article>
+      }
+
+      @if (modalOpen && config) {
+        <div class="modal-backdrop" (click)="cerrarModal()">
+          <article class="modal-card" (click)="$event.stopPropagation()">
+            <header class="modal-head">
+              <div>
+                <span class="eyebrow">{{ editId ? 'Edicion' : 'Nuevo registro' }}</span>
+                <h3>{{ editId ? 'Editar ' + config.title.toLowerCase() : 'Crear ' + config.title.toLowerCase() }}</h3>
+              </div>
+              <button class="modal-close" type="button" (click)="cerrarModal()">×</button>
+            </header>
+
+            <form (ngSubmit)="guardar()" class="form-grid">
+              @for (field of config.fields; track field.key) {
+                <label>
+                  {{ field.label }}
+
+                  @if (field.type === 'select') {
+                    <select [(ngModel)]="formModel[field.key]" [name]="field.key" [required]="field.required || false">
+                      <option [ngValue]="''">Selecciona...</option>
+                      @for (opt of field.options || []; track opt) {
+                        <option [value]="opt">{{ opt }}</option>
+                      }
+                    </select>
+                  } @else if (field.type === 'textarea') {
+                    <textarea rows="3" [(ngModel)]="formModel[field.key]" [name]="field.key" [required]="field.required || false"></textarea>
+                  } @else {
+                    <input [type]="field.type" [(ngModel)]="formModel[field.key]" [name]="field.key" [required]="field.required || false" />
+                  }
+                </label>
+              }
+
+              <div class="actions">
+                <button class="btn primary" type="submit" [disabled]="saving">{{ saving ? 'Guardando...' : 'Guardar cambios' }}</button>
+                <button class="btn ghost" type="button" (click)="cerrarModal()">Cancelar</button>
+              </div>
+            </form>
           </article>
         </div>
       }
@@ -283,121 +314,105 @@ const MODULE_CONFIGS: Record<string, ModuleConfig> = {
   styles: [
     `
       :host {
+        --navy-950: #061A2E;
+        --navy-900: #0B2540;
+        --gold-500: #C9A227;
+        --gold-300: #E3C77E;
+        --cream-50: #FBF8F2;
+        --white: #FFFFFF;
+        --text-900: #0B2540;
+        --text-600: #667085;
+        --border: #E7EAF0;
+        --shadow: 0 18px 40px rgba(11, 37, 64, .10);
         display: block;
+        font-family: 'Inter', system-ui, sans-serif;
       }
 
-      .crud-page {
-        display: grid;
-        gap: 1rem;
-      }
+      * { box-sizing: border-box; }
+
+      .crud-page { display: grid; gap: 1.1rem; }
+
+      .breadcrumb { font-weight: 700; font-size: .95rem; color: var(--navy-900); }
+      .breadcrumb span { color: var(--text-600); margin: 0 .3rem; font-weight: 500; }
 
       .head {
         display: flex;
         justify-content: space-between;
-        align-items: center;
-      }
-
-      .head h2 {
-        margin: 0;
-        color: #0b2540;
-      }
-
-      .head p {
-        margin: 0.25rem 0 0;
-        color: #5c6b80;
-      }
-
-      .grid {
-        display: grid;
-        grid-template-columns: minmax(280px, 360px) 1fr;
+        align-items: flex-end;
         gap: 1rem;
+        flex-wrap: wrap;
+        background: var(--white);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: 1.25rem 1.35rem;
+        box-shadow: var(--shadow);
       }
 
-      .card {
-        background: #fff;
-        border: 1px solid #e7eaf0;
-        border-radius: 16px;
-        padding: 1rem;
+      .eyebrow {
+        display: inline-block;
+        color: var(--gold-500);
+        text-transform: uppercase;
+        letter-spacing: .14em;
+        font-size: .74rem;
+        font-weight: 900;
+        margin-bottom: .35rem;
       }
 
-      .form-grid {
-        display: grid;
-        gap: 0.7rem;
-      }
+      .head h2 { margin: 0; color: var(--navy-900); font-family: 'Playfair Display', serif; font-size: 1.85rem; line-height: 1.1; }
+      .head p { margin: .35rem 0 0; color: var(--text-600); font-size: .9rem; }
+
+      .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: .9rem; }
+      .stat-card { background: var(--white); border: 1px solid var(--border); border-radius: 18px; padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+      .stat-card strong { display: block; color: var(--navy-900); font-family: 'Playfair Display', serif; font-size: 1.4rem; line-height: 1; }
+      .stat-card small { color: var(--text-600); font-size: .78rem; }
+
+      .card { background: var(--white); border: 1px solid var(--border); border-radius: 20px; padding: 1.25rem 1.35rem; box-shadow: var(--shadow); }
+      .table-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+      .table-head h3, .modal-head h3 { margin: 0; color: var(--navy-900); font-family: 'Playfair Display', serif; font-size: 1.25rem; }
+
+      .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .9rem; }
+      .form-grid label:has(textarea) { grid-column: 1 / -1; }
 
       label {
         display: grid;
-        gap: 0.35rem;
-        color: #0b2540;
-        font-weight: 600;
-        font-size: 0.88rem;
+        gap: .4rem;
+        color: var(--navy-900);
+        font-weight: 700;
+        font-size: .85rem;
       }
 
-      input,
-      select,
-      textarea {
+      input, select, textarea {
         width: 100%;
-        padding: 0.6rem 0.7rem;
-        border: 1px solid #d7dce6;
-        border-radius: 10px;
+        padding: .65rem .75rem;
+        border: 1px solid var(--border);
+        border-radius: 12px;
         font: inherit;
+        color: var(--text-900);
+        background: var(--cream-50);
       }
 
-      .actions {
-        display: flex;
-        gap: 0.5rem;
-      }
+      .actions { display: flex; gap: .6rem; justify-content: flex-end; grid-column: 1 / -1; margin-top: .3rem; }
 
       .btn {
         border: none;
-        border-radius: 10px;
-        padding: 0.55rem 0.85rem;
-        font-weight: 700;
+        border-radius: 12px;
+        padding: .65rem 1rem;
+        font-weight: 800;
+        font-size: .86rem;
         cursor: pointer;
       }
 
-      .btn.primary {
-        background: #c9a227;
-        color: #0b2540;
-      }
+      .btn.primary { background: linear-gradient(135deg, var(--gold-300), var(--gold-500)); color: var(--navy-950); }
+      .btn.ghost { background: var(--cream-50); color: var(--navy-900); border: 1px solid var(--border); }
 
-      .btn.ghost {
-        background: #eef2f7;
-        color: #1f2937;
-      }
+      .btn.tiny { background: var(--cream-50); color: var(--navy-900); font-size: .78rem; padding: .35rem .55rem; border: 1px solid var(--border); }
+      .btn.tiny.danger { background: #fff5f5; color: #b91c1c; border-color: rgba(185,28,28,.35); }
 
-      .btn.tiny {
-        background: #e9eff8;
-        color: #0b2540;
-        font-size: 0.78rem;
-        padding: 0.35rem 0.55rem;
-      }
+      .alert { margin: 0; padding: .7rem .9rem; border-radius: 12px; font-size: .88rem; font-weight: 650; }
+      .alert.success { background: rgba(201,162,39,.14); color: var(--navy-900); border: 1px solid rgba(201,162,39,.35); }
+      .alert.error { background: rgba(122,46,46,.1); color: #7A2E2E; border: 1px solid rgba(122,46,46,.25); }
 
-      .btn.tiny.danger {
-        background: #fee2e2;
-        color: #991b1b;
-      }
-
-      .error,
-      .message {
-        margin: 0;
-        padding: 0.6rem 0.8rem;
-        border-radius: 10px;
-      }
-
-      .error {
-        background: #fef2f2;
-        color: #b91c1c;
-      }
-
-      .message {
-        background: #ecfdf3;
-        color: #166534;
-      }
-
-      .table-wrap {
-        overflow-x: auto;
-      }
+      .table-wrap { overflow-x: auto; }
 
       table {
         width: 100%;
@@ -408,24 +423,47 @@ const MODULE_CONFIGS: Record<string, ModuleConfig> = {
       th,
       td {
         text-align: left;
-        border-bottom: 1px solid #eceff4;
-        padding: 0.55rem 0.45rem;
+        border-bottom: 1px solid var(--border);
+        padding: .75rem .6rem;
+        font-size: .88rem;
+        color: var(--text-900);
       }
 
-      th {
-        font-size: 0.82rem;
-        color: #0b2540;
+      th { color: var(--text-600); font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; font-weight: 800; }
+      tbody tr:hover { background: var(--cream-50); }
+
+      .row-actions { display: flex; gap: .4rem; }
+      .icon-action { border: 1px solid var(--border); background: var(--cream-50); color: var(--navy-900); border-radius: 10px; padding: .35rem .55rem; cursor: pointer; font-size: .78rem; }
+
+      .empty-state { display: grid; justify-items: center; gap: .6rem; padding: 2rem 0; color: var(--text-600); }
+
+      .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        display: grid;
+        place-items: center;
+        padding: 1rem;
+        background: rgba(6, 26, 46, .58);
+        backdrop-filter: blur(4px);
       }
 
-      .row-actions {
-        display: flex;
-        gap: 0.35rem;
+      .modal-card {
+        width: min(720px, 100%);
+        max-height: min(86vh, 760px);
+        overflow: auto;
+        background: var(--white);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: 1.25rem;
+        box-shadow: 0 26px 70px rgba(6, 26, 46, .28);
       }
+
+      .modal-head { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; margin-bottom: 1rem; }
+      .modal-close { width: 36px; height: 36px; border: 1px solid var(--border); border-radius: 10px; background: var(--cream-50); color: var(--navy-900); font-size: 1.4rem; line-height: 1; cursor: pointer; }
 
       @media (max-width: 980px) {
-        .grid {
-          grid-template-columns: 1fr;
-        }
+        .stats-row, .form-grid { grid-template-columns: 1fr; }
       }
     `
   ]
@@ -442,6 +480,7 @@ export class AdminCrudPageComponent implements OnInit {
   error = "";
   message = "";
   editId: number | null = null;
+  modalOpen = false;
 
   ngOnInit(): void {
     const moduleKey = this.route.snapshot.routeConfig?.path || "";
@@ -474,6 +513,17 @@ export class AdminCrudPageComponent implements OnInit {
     this.formModel = model;
   }
 
+  abrirNuevo(): void {
+    if (!this.config || this.config.allowCreate === false) return;
+    this.nuevo();
+    this.modalOpen = true;
+  }
+
+  cerrarModal(): void {
+    this.modalOpen = false;
+    this.saving = false;
+  }
+
   cargar(): void {
     if (!this.config) return;
     this.loading = true;
@@ -498,10 +548,15 @@ export class AdminCrudPageComponent implements OnInit {
     this.formModel = { ...mapped };
     this.message = "";
     this.error = "";
+    this.modalOpen = true;
   }
 
   guardar(): void {
     if (!this.config) return;
+    if (!this.editId && this.config.allowCreate === false) {
+      this.error = "Este modulo no permite creacion manual desde administracion.";
+      return;
+    }
 
     for (const field of this.config.fields) {
       if (field.required && !this.formModel[field.key]) {
@@ -523,6 +578,7 @@ export class AdminCrudPageComponent implements OnInit {
       next: () => {
         this.message = this.editId ? "Registro actualizado." : "Registro creado.";
         this.saving = false;
+        this.cerrarModal();
         this.nuevo();
         this.cargar();
       },

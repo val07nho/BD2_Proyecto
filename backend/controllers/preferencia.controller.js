@@ -25,7 +25,6 @@ function normalizePerfilPayload(body) {
           : []
     },
     idiomas: Array.isArray(body.idiomas) ? body.idiomas : body.idiomas ? [body.idiomas] : [],
-    telefonos: Array.isArray(body.telefonos) ? body.telefonos : [],
     ultimaConexion: body.ultimaConexion ? new Date(body.ultimaConexion) : new Date(),
     fechaCreacion: body.fechaCreacion ? new Date(body.fechaCreacion) : new Date()
   };
@@ -91,20 +90,22 @@ async function updatePreferencia(req, res, next) {
     const result = await db.collection(COLLECTION).updateOne(
       { idHuesped },
       {
+        $setOnInsert: {
+          idHuesped,
+          fechaCreacion: payload.fechaCreacion
+        },
         $set: {
           preferencias: payload.preferencias,
           idiomas: payload.idiomas,
-          telefonos: payload.telefonos,
           ultimaConexion: payload.ultimaConexion
         }
-      }
+      },
+      { upsert: true }
     );
 
-    if (!result.matchedCount) {
-      return res.status(404).json({ message: "Perfil no encontrado" });
-    }
-
-    res.json({ message: "Perfil cliente actualizado" });
+    res.json({
+      message: result.upsertedCount ? "Perfil cliente creado" : "Perfil cliente actualizado"
+    });
   } catch (error) {
     next(error);
   }

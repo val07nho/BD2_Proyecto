@@ -70,6 +70,26 @@ async function updateHuesped(req, res, next) {
     } = req.body;
     connection = await getOracleConnection();
 
+    if (!["ADMIN", "CLIENTE"].includes(req.user?.role)) {
+      return res.status(403).json({ message: "No tienes permisos para editar huespedes" });
+    }
+
+    if (req.user?.role === "CLIENTE") {
+      const ownerResult = await connection.execute(
+        "SELECT ID_USUARIO FROM HUESPED WHERE ID_HUESPED = :id",
+        { id: Number(id) },
+        { outFormat }
+      );
+
+      if (ownerResult.rows.length === 0) {
+        return res.status(404).json({ message: "Huesped no encontrado" });
+      }
+
+      if (Number(ownerResult.rows[0].ID_USUARIO) !== Number(req.user.id)) {
+        return res.status(403).json({ message: "No puedes editar datos de otro huesped" });
+      }
+    }
+
     const result = await connection.execute(
       `UPDATE HUESPED
        SET ID_USUARIO = :id_usuario,
@@ -83,7 +103,7 @@ async function updateHuesped(req, res, next) {
        WHERE ID_HUESPED = :id`,
       {
         id: Number(id),
-        id_usuario: id_usuario || null,
+        id_usuario: req.user?.role === "CLIENTE" ? req.user.id : id_usuario || null,
         nombres,
         apellidos,
         tipo_documento: tipo_documento || (dni_pasaporte ? "DNI" : null),

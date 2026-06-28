@@ -1,4 +1,4 @@
-require("dotenv").config();
+﻿require("dotenv").config();
 
 const { MongoClient } = require("mongodb");
 
@@ -21,7 +21,6 @@ function buildSeedData() {
         serviciosFavoritos: ["Spa", "Room Service"]
       },
       idiomas: ["Espanol", "Ingles"],
-      telefonos: [{ tipo: "Movil", numero: `999000${String(i).padStart(3, "0")}` }],
       fechaCreacion: new Date("2026-01-01T10:00:00Z"),
       ultimaConexion: new Date("2026-06-20T18:00:00Z")
     });
@@ -155,3 +154,4 @@ setupMongo()
     console.error("[MongoDB] Error al inicializar:", error.message);
     process.exit(1);
   });
+

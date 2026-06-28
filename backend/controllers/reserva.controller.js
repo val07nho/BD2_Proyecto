@@ -162,6 +162,22 @@ async function updateReserva(req, res, next) {
     const subtotal = Number(precio_noche || 0) * nights;
     const normalizedEstadoValue = normalizeEstado(estado);
 
+    if (normalizedEstadoValue === "CANCELADA") {
+      const currentResult = await connection.execute(
+        "SELECT ESTADO FROM RESERVA WHERE ID_RESERVA = :id",
+        { id: Number(id) },
+        { outFormat }
+      );
+
+      if (currentResult.rows.length === 0) {
+        return res.status(404).json({ message: "Reserva no encontrada" });
+      }
+
+      if (normalizeEstado(currentResult.rows[0].ESTADO) !== "PENDIENTE") {
+        return res.status(400).json({ message: "Solo se pueden cancelar reservas pendientes" });
+      }
+    }
+
     const result = await connection.execute(
       `UPDATE RESERVA
        SET FECHA_INGRESO = TO_DATE(:fecha_ingreso, 'YYYY-MM-DD'),

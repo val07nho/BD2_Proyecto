@@ -6,8 +6,8 @@ import { HabitacionesAdminComponent } from "./habitaciones/habitaciones-admin.co
 import { AdminCrudPageComponent } from "./admin-crud-page.component";
 import { UsuariosAdminComponent } from "./usuarios/usuarios-admin.component";
 import { RolesAdminComponent } from "./roles/roles-admin.component";
-import { SectionPageComponent } from "../shared/components/section-page.component";
 import { RecomendacionesAdminComponent } from "./recomendaciones/recomendaciones-admin.component";
+import { ReportesGerenteComponent } from "../gerente/reportes-gerente.component";
 
 export const administradorRoutes: Routes = [
   {
@@ -24,7 +24,7 @@ export const administradorRoutes: Routes = [
       { path: "facturas", component: AdminCrudPageComponent },
       { path: "pagos", component: AdminCrudPageComponent },
       { path: "recomendaciones", component: RecomendacionesAdminComponent },
-      { path: "reportes", component: SectionPageComponent, data: { title: "Reportes", description: "Reportes administrativos y operativos." } }
+      { path: "reportes", component: ReportesGerenteComponent, data: { vista: "reportes", title: "Reportes administrativos", area: "Administracion" } }
     ]
   }
 ];

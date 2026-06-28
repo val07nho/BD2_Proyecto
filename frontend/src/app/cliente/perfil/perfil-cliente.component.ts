@@ -1,6 +1,6 @@
-import { CommonModule } from "@angular/common";
+﻿import { CommonModule } from "@angular/common";
 import { Component, OnInit, inject } from "@angular/core";
-import { FormArray, FormBuilder, ReactiveFormsModule, Validators } from "@angular/forms";
+import { FormBuilder, ReactiveFormsModule, Validators } from "@angular/forms";
 import { firstValueFrom } from "rxjs";
 
 import { ApiService } from "../../core/services/api.service";
@@ -30,7 +30,6 @@ interface PerfilMongo {
     serviciosFavoritos?: string[];
   };
   idiomas?: string[];
-  telefonos?: Array<{ tipo?: string; numero?: string }>;
   fechaCreacion?: string | Date;
   ultimaConexion?: string | Date;
 }
@@ -42,13 +41,13 @@ interface PerfilMongo {
   template: `
     <section class="perfil-container">
 
-      <!-- Top Bar: solo el badge de última conexión, alineado a la derecha (igual al mockup) -->
+      <!-- Top Bar: solo el badge de ultima conexion, alineado a la derecha -->
       <div class="top-nav-row">
         <div></div>
         <div class="connection-badge">
           <i class="icon-clock"></i>
           <div>
-            <small>Última conexión</small>
+            <small>Ultima conexion</small>
             <strong>{{ formatearFecha(ultimaConexion) }}</strong>
           </div>
         </div>
@@ -82,12 +81,12 @@ interface PerfilMongo {
               <div class="form-inputs-stack">
                 <div class="form-field-row">
                   <label><i class="icon-user"></i> Nombres</label>
-                  <input type="text" formControlName="nombres" placeholder="Ana María" />
+                  <input type="text" formControlName="nombres" placeholder="Ana Maria" />
                 </div>
 
                 <div class="form-field-row">
                   <label><i class="icon-user"></i> Apellidos</label>
-                  <input type="text" formControlName="apellidos" placeholder="García López" />
+                  <input type="text" formControlName="apellidos" placeholder="Garcia Lopez" />
                 </div>
 
                 <div class="form-field-row">
@@ -101,12 +100,12 @@ interface PerfilMongo {
                 </div>
 
                 <div class="form-field-row">
-                  <label><i class="icon-credit-card"></i> Número de documento</label>
+                  <label><i class="icon-credit-card"></i> Numero de documento</label>
                   <input type="text" formControlName="numeroDocumento" />
                 </div>
 
                 <div class="form-field-row">
-                  <label><i class="icon-mail"></i> Correo electrónico</label>
+                  <label><i class="icon-mail"></i> Correo electronico</label>
                   <input type="email" formControlName="correo" />
                 </div>
 
@@ -116,7 +115,7 @@ interface PerfilMongo {
                 </div>
 
                 <div class="form-field-row">
-                  <label><i class="icon-phone"></i> Teléfono</label>
+                  <label><i class="icon-phone"></i> Telefono</label>
                   <input type="text" formControlName="telefono" placeholder="999 000 002" />
                 </div>
               </div>
@@ -127,50 +126,25 @@ interface PerfilMongo {
               <h2 class="card-title">Idiomas</h2>
               <div class="checkbox-vertical-list">
                 <label class="custom-checkbox">
-                  <input type="checkbox" (change)="onIdiomaChange($event, 'Español')" [checked]="checkIdioma('Español')" />
-                  <span class="box-indicator"></span> Español
+                  <input type="checkbox" (change)="onIdiomaChange($event, 'Espanol')" [checked]="checkIdioma('Espanol')" />
+                  <span class="box-indicator"></span> Espanol
                 </label>
                 <label class="custom-checkbox">
-                  <input type="checkbox" (change)="onIdiomaChange($event, 'Inglés')" [checked]="checkIdioma('Inglés')" />
-                  <span class="box-indicator"></span> Inglés
+                  <input type="checkbox" (change)="onIdiomaChange($event, 'Ingles')" [checked]="checkIdioma('Ingles')" />
+                  <span class="box-indicator"></span> Ingles
                 </label>
                 <label class="custom-checkbox">
-                  <input type="checkbox" (change)="onIdiomaChange($event, 'Francés')" [checked]="checkIdioma('Francés')" />
-                  <span class="box-indicator"></span> Francés
+                  <input type="checkbox" (change)="onIdiomaChange($event, 'Frances')" [checked]="checkIdioma('Frances')" />
+                  <span class="box-indicator"></span> Frances
                 </label>
                 <label class="custom-checkbox">
-                  <input type="checkbox" (change)="onIdiomaChange($event, 'Alemán')" [checked]="checkIdioma('Alemán')" />
-                  <span class="box-indicator"></span> Alemán
+                  <input type="checkbox" (change)="onIdiomaChange($event, 'Aleman')" [checked]="checkIdioma('Aleman')" />
+                  <span class="box-indicator"></span> Aleman
                 </label>
                 <label class="custom-checkbox">
-                  <input type="checkbox" (change)="onIdiomaChange($event, 'Portugués')" [checked]="checkIdioma('Portugués')" />
-                  <span class="box-indicator"></span> Portugués
+                  <input type="checkbox" (change)="onIdiomaChange($event, 'Portugues')" [checked]="checkIdioma('Portugues')" />
+                  <span class="box-indicator"></span> Portugues
                 </label>
-              </div>
-            </div>
-
-            <div class="profile-card">
-              <div class="card-head-inline">
-                <h2 class="card-title">Teléfonos</h2>
-                <button type="button" class="btn btn-outline btn-sm" (click)="agregarTelefono()">Agregar</button>
-              </div>
-
-              <div formArrayName="telefonos" class="phones-stack">
-                @for (telefono of telefonosArray.controls; track $index) {
-                  <div class="phone-row" [formGroupName]="$index">
-                    <div class="phone-fields">
-                      <div class="select-wrapper compact">
-                        <select formControlName="tipo">
-                          <option value="Móvil">Móvil</option>
-                          <option value="Casa">Casa</option>
-                          <option value="Trabajo">Trabajo</option>
-                        </select>
-                      </div>
-                      <input type="text" formControlName="numero" placeholder="999 000 001" />
-                    </div>
-                    <button type="button" class="icon-danger" (click)="quitarTelefono($index)" [disabled]="telefonosArray.length <= 1">×</button>
-                  </div>
-                }
               </div>
             </div>
           </div>
@@ -184,23 +158,49 @@ interface PerfilMongo {
 
               <div class="preferences-dropdown-grid">
                 <div class="form-field-row">
-                  <label>Tipo de habitación favorita</label>
-                  <div class="select-wrapper"><select formControlName="tipoHabitacion"><option value="Deluxe">Deluxe</option></select></div>
+                  <label>Tipo de habitacion favorita</label>
+                  <div class="select-wrapper">
+                    <select formControlName="tipoHabitacion">
+                      <option value="Estandar">Estandar</option>
+                      <option value="Deluxe">Deluxe</option>
+                      <option value="Suite">Suite</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div class="form-field-row">
                   <label>Vista preferida</label>
-                  <div class="select-wrapper"><select formControlName="vista"><option value="Mar">Mar</option></select></div>
+                  <div class="select-wrapper">
+                    <select formControlName="vista">
+                      <option value="Mar">Mar</option>
+                      <option value="Jardin">Jardin</option>
+                      <option value="Piscina">Piscina</option>
+                      <option value="Ciudad">Ciudad</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div class="form-field-row">
                   <label>Tipo de cama</label>
-                  <div class="select-wrapper"><select formControlName="tipoCama"><option value="Queen">Queen</option></select></div>
+                  <div class="select-wrapper">
+                    <select formControlName="tipoCama">
+                      <option value="Individual">Individual</option>
+                      <option value="Queen">Queen</option>
+                      <option value="King">King</option>
+                      <option value="Twin">Twin</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div class="form-field-row">
                   <label>Almohadas</label>
-                  <div class="select-wrapper"><select formControlName="almohada"><option value="Suaves">Suaves</option></select></div>
+                  <div class="select-wrapper">
+                    <select formControlName="almohada">
+                      <option value="Suaves">Suaves</option>
+                      <option value="Firmes">Firmes</option>
+                      <option value="Ortopedicas">Ortopedicas</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div class="form-field-row span-2">
@@ -214,7 +214,7 @@ interface PerfilMongo {
 
               <div class="card-divider-line"></div>
 
-              <!-- Listas de Selección (Dieta / Servicios) -->
+              <!-- Listas de Seleccion (Dieta / Servicios) -->
               <div class="preferences-selection-columns">
                 <div class="selection-column">
                   <span class="selection-heading">Dieta</span>
@@ -258,22 +258,22 @@ interface PerfilMongo {
                       <span class="box-indicator"></span> Gimnasio
                     </label>
                     <label class="custom-checkbox">
-                      <input type="checkbox" (change)="onServiceChange($event, 'Lavandería')" [checked]="checkService('Lavandería')" />
-                      <span class="box-indicator"></span> Lavandería
+                      <input type="checkbox" (change)="onServiceChange($event, 'Lavanderia')" [checked]="checkService('Lavanderia')" />
+                      <span class="box-indicator"></span> Lavanderia
                     </label>
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- Tarjeta inferior: Información adicional (MongoDB) -->
+            <!-- Tarjeta inferior: Informacion adicional (MongoDB) -->
             <div class="profile-card horizontal-info-card">
-              <span class="info-title">Información adicional</span>
+              <span class="info-title">Informacion adicional</span>
               <div class="info-row-content">
                 <div class="info-block-item">
                   <i class="icon-calendar"></i>
                   <div>
-                    <small>Fecha de creación</small>
+                    <small>Fecha de creacion</small>
                     <strong>{{ formatearFecha(fechaCreacion) }}</strong>
                   </div>
                 </div>
@@ -281,14 +281,14 @@ interface PerfilMongo {
                 <div class="info-block-item">
                   <i class="icon-clock"></i>
                   <div>
-                    <small>Última conexión</small>
+                    <small>Ultima conexion</small>
                     <strong>{{ formatearFecha(ultimaConexion) }}</strong>
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- Botonera de Acción alineada a la derecha -->
+            <!-- Botonera de accion alineada a la derecha -->
             <div class="form-action-buttons">
               <button type="button" class="btn btn-outline" (click)="restablecerCambios()">
                 <i class="icon-rotate-ccw"></i> Restablecer cambios
@@ -361,7 +361,7 @@ interface PerfilMongo {
 
       .profile-layout-grid {
         display: grid;
-        grid-template-columns: 380px 1fr;
+        grid-template-columns: minmax(420px, 0.9fr) minmax(0, 1.6fr);
         gap: 1.5rem;
         align-items: start;
       }
@@ -407,9 +407,9 @@ interface PerfilMongo {
       }
 
       .form-field-row {
-        display: flex;
+        display: grid;
+        grid-template-columns: minmax(140px, 180px) minmax(0, 1fr);
         align-items: center;
-        justify-content: space-between;
         gap: 1rem;
       }
       .form-field-row label {
@@ -419,8 +419,8 @@ interface PerfilMongo {
         display: flex;
         align-items: center;
         gap: 0.5rem;
-        width: 160px;
-        min-width: 140px;
+        width: auto;
+        min-width: 0;
       }
       .form-field-row label i {
         color: var(--gold-theme);
@@ -430,6 +430,7 @@ interface PerfilMongo {
 
       input[type="text"], input[type="email"], input[type="number"], select {
         flex: 1;
+        min-width: 0;
         width: 100%;
         padding: 0.6rem 0.9rem;
         border: 1px solid var(--border-color);
@@ -594,6 +595,17 @@ interface PerfilMongo {
         .profile-layout-grid { grid-template-columns: 1fr; }
         .preferences-dropdown-grid { grid-template-columns: repeat(2, 1fr); }
       }
+
+      @media (max-width: 640px) {
+        .perfil-container { padding: 1.4rem 1rem; }
+        .profile-card { padding: 1.25rem; }
+        .form-field-row { grid-template-columns: 1fr; gap: .45rem; }
+        .preferences-dropdown-grid, .preferences-selection-columns { grid-template-columns: 1fr; }
+        .preferences-dropdown-grid .span-2 { grid-column: auto; }
+        .info-row-content { flex-direction: column; align-items: flex-start; gap: 1rem; }
+        .vertical-separator { display: none; }
+        .form-action-buttons { flex-direction: column; }
+      }
     `
   ]
 })
@@ -607,10 +619,10 @@ export class PerfilClienteComponent implements OnInit {
     nombres: ["", Validators.required],
     apellidos: ["", Validators.required],
     tipoDocumento: ["DNI", Validators.required],
-    numeroDocumento: ["", Validators.required],
+    numeroDocumento: [""],
     correo: ["", [Validators.required, Validators.email]],
-    nacionalidad: ["", Validators.required],
-    telefono: ["", Validators.required],
+    nacionalidad: [""],
+    telefono: [""],
 
     // Preferencias / idiomas -> MongoDB
     tipoHabitacion: ["Deluxe"],
@@ -620,8 +632,7 @@ export class PerfilClienteComponent implements OnInit {
     temperatura: [22],
     dieta: [[] as string[]],
     serviciosFavoritos: [[] as string[]],
-    idiomas: [[] as string[]],
-    telefonos: this.fb.array([])
+    idiomas: [[] as string[]]
   });
 
   cargando = true;
@@ -633,10 +644,6 @@ export class PerfilClienteComponent implements OnInit {
   idHuespedActual: number | null = null;
   fechaCreacion?: string | Date;
   ultimaConexion?: string | Date;
-
-  get telefonosArray(): FormArray {
-    return this.perfilForm.get("telefonos") as FormArray;
-  }
 
   async ngOnInit() {
     await this.cargarPerfilCompleto();
@@ -658,7 +665,7 @@ export class PerfilClienteComponent implements OnInit {
       const huesped = huespedes.find((h) => Number(h.ID_USUARIO) === this.idUsuarioActual) || null;
 
       if (!huesped) {
-        throw new Error("Tu usuario no tiene un huésped asociado en Oracle.");
+        throw new Error("Tu usuario no tiene un huesped asociado en Oracle.");
       }
 
       this.idHuespedActual = huesped.ID_HUESPED;
@@ -668,12 +675,6 @@ export class PerfilClienteComponent implements OnInit {
 
       this.fechaCreacion = perfilMongo?.fechaCreacion;
       this.ultimaConexion = perfilMongo?.ultimaConexion;
-
-      const mongoTelefonos = perfilMongo?.telefonos?.length
-        ? perfilMongo.telefonos
-        : [{ tipo: "Móvil", numero: huesped.TELEFONO || "" }];
-
-      this.reemplazarTelefonos(mongoTelefonos);
 
       this.perfilForm.patchValue({
         nombres: huesped.NOMBRES || "",
@@ -695,7 +696,7 @@ export class PerfilClienteComponent implements OnInit {
       });
 
     } catch (err) {
-      this.error = this.extraerMensaje(err, "No se pudo cargar la información del perfil.");
+      this.error = this.extraerMensaje(err, "No se pudo cargar la informacion del perfil.");
     } finally {
       this.cargando = false;
     }
@@ -772,13 +773,6 @@ export class PerfilClienteComponent implements OnInit {
     const payloadMongo = {
       idHuesped: this.idHuespedActual,
       idiomas: v.idiomas || [],
-      telefonos: this.telefonosArray.controls
-        .map((control) => control.value)
-        .map((item) => ({
-          tipo: String(item?.tipo || "Móvil").trim(),
-          numero: String(item?.numero || "").trim()
-        }))
-        .filter((item) => item.numero),
       tipoHabitacion: v.tipoHabitacion || "",
       vista: v.vista || "",
       tipoCama: v.tipoCama || "",
@@ -806,22 +800,10 @@ export class PerfilClienteComponent implements OnInit {
     this.cargarPerfilCompleto();
   }
 
-  agregarTelefono() {
-    this.telefonosArray.push(this.crearTelefonoForm());
-  }
-
-  quitarTelefono(index: number) {
-    if (this.telefonosArray.length <= 1) {
-      return;
-    }
-
-    this.telefonosArray.removeAt(index);
-  }
-
   formatearFecha(valor?: string | Date) {
-    if (!valor) return "—";
+    if (!valor) return "-";
     const fecha = new Date(valor);
-    if (Number.isNaN(fecha.getTime())) return "—";
+    if (Number.isNaN(fecha.getTime())) return "-";
     return new Intl.DateTimeFormat("es-PE", {
       day: "2-digit",
       month: "2-digit",
@@ -848,22 +830,7 @@ export class PerfilClienteComponent implements OnInit {
     }
     return fallback;
   }
-
-  private reemplazarTelefonos(telefonos: Array<{ tipo?: string; numero?: string }>) {
-    this.telefonosArray.clear();
-    for (const telefono of telefonos) {
-      this.telefonosArray.push(this.crearTelefonoForm(telefono.tipo, telefono.numero));
-    }
-
-    if (this.telefonosArray.length === 0) {
-      this.telefonosArray.push(this.crearTelefonoForm());
-    }
-  }
-
-  private crearTelefonoForm(tipo = "Móvil", numero = "") {
-    return this.fb.group({
-      tipo: [tipo || "Móvil"],
-      numero: [numero || ""]
-    });
-  }
 }
+
+
+

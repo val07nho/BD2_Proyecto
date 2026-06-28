@@ -1,11 +1,14 @@
 const { Router } = require("express");
 const controller = require("../controllers/reserva.controller");
+const { requireAuth, requireRole } = require("../middleware/auth.middleware");
 
 const router = Router();
 
+router.use(requireAuth);
+
 router.get("/", controller.listReservas);
 router.post("/", controller.createReserva);
-router.put("/:id", controller.updateReserva);
-router.delete("/:id", controller.deleteReserva);
+router.put("/:id", requireRole("ADMIN", "GERENTE"), controller.updateReserva);
+router.delete("/:id", requireRole("ADMIN"), controller.deleteReserva);
 
 module.exports = router;

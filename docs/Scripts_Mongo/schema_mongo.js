@@ -109,17 +109,6 @@ db.createCollection("perfil_cliente", {
             }
           }
         },
-        telefonos: {
-          bsonType: "array",
-          items: {
-            bsonType: "object",
-            required: ["tipo", "numero"],
-            properties: {
-              tipo: { bsonType: "string" },
-              numero: { bsonType: "string" }
-            }
-          }
-        },
         idiomas: {
           bsonType: "array",
           items: { bsonType: "string" }

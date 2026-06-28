@@ -118,7 +118,6 @@ import { AuthService } from "../core/services/auth.service";
             @if (menuOpen) {
               <div class="dropdown">
                 <a routerLink="/cliente/perfil">Mi perfil</a>
-                <a routerLink="/cliente/preferencias">Preferencias</a>
                 <button type="button" (click)="logout()">Cerrar sesión</button>
               </div>
             }

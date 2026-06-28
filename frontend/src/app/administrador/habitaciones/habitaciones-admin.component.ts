@@ -320,6 +320,11 @@ interface HabitacionAdmin {
         align-items: flex-end;
         gap: 1rem;
         flex-wrap: wrap;
+        background: var(--white);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: 1.25rem 1.35rem;
+        box-shadow: var(--shadow);
       }
 
       .eyebrow {

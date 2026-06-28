@@ -119,8 +119,20 @@ La aplicacion Angular ya esta preparada para consumirlos en cuanto los agregues.
 
 - Oracle schema: `docs/Scripts_SQL/schema_oracle.sql`
 - Oracle seed:   `docs/Scripts_SQL/seed_oracle.sql`
+- Oracle security: `docs/Scripts_SQL/security_oracle.sql`
 - Mongo schema:  `docs/Scripts_Mongo/schema_mongo.js`
 - Mongo seed:    `docs/Scripts_Mongo/seed_mongo.js`
+- Mongo security: `docs/Scripts_Mongo/security_mongo.js`
+
+## Seguridad
+
+La seguridad esta documentada en `docs/Seguridad.md`.
+
+- Autenticacion JWT en el backend.
+- Hash de contrasenas con `bcrypt`.
+- Middleware de proteccion por token y rol en `backend/middleware/auth.middleware.js`.
+- Usuarios/roles de minimo privilegio para Oracle y MongoDB.
+- Vista Oracle con datos sensibles enmascarados para reportes.
 
 ## Notas
 

@@ -134,7 +134,18 @@ interface RolAdmin {
       .crud-page { display:grid; gap:1.1rem; }
       .breadcrumb { font-weight:700; font-size:.95rem; color:var(--navy-900); }
       .breadcrumb span { color:var(--text-600); margin:0 .3rem; font-weight:500; }
-      .head { display:flex; justify-content:space-between; align-items:flex-end; gap:1rem; flex-wrap:wrap; }
+      .head {
+        display:flex;
+        justify-content:space-between;
+        align-items:flex-end;
+        gap:1rem;
+        flex-wrap:wrap;
+        background:var(--white);
+        border:1px solid var(--border);
+        border-radius:20px;
+        padding:1.25rem 1.35rem;
+        box-shadow:var(--shadow);
+      }
       .eyebrow { display:inline-block; color:var(--gold-500); text-transform:uppercase; letter-spacing:.14em; font-size:.74rem; font-weight:900; margin-bottom:.35rem; }
       .head h2 { margin:0; color:var(--navy-900); font-family:'Playfair Display', serif; font-size:1.85rem; line-height:1.1; }
       .head p { margin:.35rem 0 0; color:var(--text-600); font-size:.9rem; }

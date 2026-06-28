@@ -1,4 +1,4 @@
-// HRMS MongoDB seed data (30 registros por colección)
+﻿// HRMS MongoDB seed data (30 registros por colecciÃ³n)
 
 use("hrms");
 
@@ -20,10 +20,10 @@ for (let i = 1; i <= 30; i++) {
     idReserva: i,
     fecha: new Date(`2026-06-${String((i % 28) + 1).padStart(2, "0")}T10:00:00Z`),
     calificacionGeneral: (i % 5) + 1,
-    comentario: `Comentario de satisfacción ${i}`,
+    comentario: `Comentario de satisfacciÃ³n ${i}`,
     criterios: [
       { nombre: "Limpieza", puntaje: ((i + 1) % 5) + 1 },
-      { nombre: "Atención", puntaje: ((i + 2) % 5) + 1 },
+      { nombre: "AtenciÃ³n", puntaje: ((i + 2) % 5) + 1 },
       { nombre: "Comodidad", puntaje: ((i + 3) % 5) + 1 }
     ]
   });
@@ -34,7 +34,7 @@ for (let i = 1; i <= 30; i++) {
     busquedas: [
       {
         fecha: new Date("2026-05-05T09:00:00Z"),
-        texto: "Habitación Deluxe"
+        texto: "HabitaciÃ³n Deluxe"
       },
       {
         fecha: new Date("2026-06-10T13:00:00Z"),
@@ -67,20 +67,14 @@ for (let i = 1; i <= 30; i++) {
     idHuesped: i,
     preferencias: {
       tipoHabitacion: i % 3 === 0 ? "Suite" : i % 2 === 0 ? "Deluxe" : "Estandar",
-      vista: i % 2 === 0 ? "Mar" : "Jardín",
+      vista: i % 2 === 0 ? "Mar" : "JardÃ­n",
       tipoCama: i % 3 === 0 ? "King" : "Queen",
-      almohadas: i % 2 === 0 ? "Suave" : "Ortopédica",
+      almohadas: i % 2 === 0 ? "Suave" : "OrtopÃ©dica",
       temperatura: 20 + (i % 5),
       dieta: i % 4 === 0 ? ["Vegetariana"] : ["Regular"],
       serviciosFavoritos: ["Spa", "Room Service"]
     },
-    telefonos: [
-      {
-        tipo: "Móvil",
-        numero: `999000${String(i).padStart(3, "0")}`
-      }
-    ],
-    idiomas: ["Español", "Inglés"],
+    idiomas: ["EspaÃ±ol", "InglÃ©s"],
     favoritos: [
       {
         categoria: "Evento",
@@ -102,13 +96,13 @@ for (let i = 1; i <= 30; i++) {
       {
         categoria: "Servicio",
         nombre: "Spa",
-        descripcion: "Sesión de relajación de 60 minutos",
+        descripcion: "SesiÃ³n de relajaciÃ³n de 60 minutos",
         prioridad: 5
       },
       {
         categoria: "Evento",
         nombre: "Tour Marino",
-        descripcion: "Recorrido de medio día por la costa",
+        descripcion: "Recorrido de medio dÃ­a por la costa",
         prioridad: 4
       }
     ],
