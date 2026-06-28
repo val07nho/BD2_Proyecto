@@ -1,7 +1,9 @@
 import { CommonModule, DecimalPipe } from "@angular/common";
 import { Component, OnInit, inject } from "@angular/core";
+import { FormsModule } from "@angular/forms";
 import { ApiService } from "../../core/services/api.service";
 import { TrackingService } from "../../core/services/tracking.service";
+import { AuthService } from "../../core/services/auth.service";
 
 interface Servicio {
   ID_SERVICIO: number;
@@ -11,10 +13,17 @@ interface Servicio {
   ESTADO: "A" | "I" | string;
 }
 
+interface ReservaMini {
+  ID_RESERVA: number;
+  ESTADO: string;
+  FECHA_INGRESO: string;
+  FECHA_SALIDA: string;
+}
+
 @Component({
   selector: "app-servicios-cliente",
   standalone: true,
-  imports: [CommonModule, DecimalPipe],
+  imports: [CommonModule, DecimalPipe, FormsModule],
   template: `
     <section class="cliente-servicios">
       <section class="hero">
@@ -83,8 +92,46 @@ interface Servicio {
               <p class="modal-desc">
                 {{ servicioSeleccionado.DESCRIPCION || 'Este servicio exclusivo está disponible para reserva directa durante tu estancia. Nuestro personal estará encantado de asistirte para coordinar horarios y solicitudes específicas.' }}
               </p>
+
+              @if (mensajeExito) {
+                <div class="alert success">{{ mensajeExito }}</div>
+              }
+              @if (errorAdquisicion) {
+                <div class="alert error">{{ errorAdquisicion }}</div>
+              }
+
+              @if (servicioSeleccionado.ESTADO === 'A') {
+                <div class="adquisicion-section">
+                  <h3>Adquirir Servicio</h3>
+                  @if (reservasActivas.length === 0) {
+                    <p class="warning-text">Necesitas tener una reserva activa (Pendiente o Confirmada) para adquirir servicios.</p>
+                  } @else {
+                    <div class="adquisicion-form">
+                      <label>
+                        Selecciona tu Reserva:
+                        <select [(ngModel)]="idReservaSeleccionada">
+                          <option [ngValue]="null">Selecciona...</option>
+                          @for (r of reservasActivas; track r.ID_RESERVA) {
+                            <option [ngValue]="r.ID_RESERVA">
+                              Reserva #{{ r.ID_RESERVA }} ({{ r.FECHA_INGRESO | date: 'yyyy-MM-dd' }} a {{ r.FECHA_SALIDA | date: 'yyyy-MM-dd' }})
+                            </option>
+                          }
+                        </select>
+                      </label>
+                      <label>
+                        Cantidad:
+                        <input type="number" min="1" [(ngModel)]="cantidadAdquirir" />
+                      </label>
+                      <button class="btn success-btn" type="button" [disabled]="!idReservaSeleccionada || adquiriendo" (click)="adquirir()">
+                        {{ adquiriendo ? 'Procesando...' : 'Adquirir' }}
+                      </button>
+                    </div>
+                  }
+                </div>
+              }
+
               <div class="modal-actions">
-                <button class="btn primary" type="button" (click)="cerrarModal()">Entendido</button>
+                <button class="btn primary" type="button" (click)="cerrarModal()">Cerrar</button>
               </div>
             </div>
           </div>
@@ -238,6 +285,52 @@ interface Servicio {
       }
       .btn.primary { background: var(--navy-900); color: var(--white); }
 
+      .alert.success { background: rgba(46,125,50,.12); color: #1F5F23; border: 1px solid rgba(46,125,50,.24); }
+
+      .adquisicion-section {
+        border-top: 1px dashed var(--border);
+        margin-top: 1rem;
+        padding-top: 1rem;
+      }
+      .adquisicion-section h3 {
+        margin: 0 0 0.75rem 0;
+        font-family: 'Playfair Display', serif;
+        font-size: 1.1rem;
+        color: var(--navy-900);
+      }
+      .warning-text {
+        color: #8A6A00;
+        font-size: 0.85rem;
+        font-weight: 600;
+      }
+      .adquisicion-form {
+        display: grid;
+        gap: 0.75rem;
+        margin-bottom: 0.5rem;
+      }
+      .adquisicion-form label {
+        display: grid;
+        gap: 0.35rem;
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: var(--navy-700);
+      }
+      .adquisicion-form select, .adquisicion-form input {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 0.55rem;
+        font: inherit;
+        background: var(--cream-50);
+        color: var(--navy-900);
+      }
+      .btn.success-btn {
+        background: #1f6b3d;
+        color: var(--white);
+      }
+      .btn.success-btn:hover {
+        background: #17522f;
+      }
+
       @media (max-width: 1100px) {
         .servicios-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       }
@@ -251,6 +344,7 @@ interface Servicio {
 export class ServiciosClienteComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly trackingService = inject(TrackingService);
+  private readonly auth = inject(AuthService);
 
   servicios: Servicio[] = [];
   cargando = false;
@@ -261,9 +355,18 @@ export class ServiciosClienteComponent implements OnInit {
   mostrarModal = false;
   servicioSeleccionado: Servicio | null = null;
 
+  idHuespedActual: number | null = null;
+  reservasActivas: ReservaMini[] = [];
+  idReservaSeleccionada: number | null = null;
+  cantidadAdquirir = 1;
+  adquiriendo = false;
+  mensajeExito = "";
+  errorAdquisicion = "";
+
   ngOnInit(): void {
     this.trackingService.registrarVisita("Servicios", "Ingresó al módulo");
     this.cargarServicios();
+    this.cargarHuespedYReservas();
   }
 
   onFiltroChanged(val: string): void {
@@ -299,15 +402,72 @@ export class ServiciosClienteComponent implements OnInit {
     });
   }
 
+  cargarHuespedYReservas(): void {
+    const userId = this.auth.getUserId();
+    if (!userId) return;
+
+    this.api.get<any[]>("/huespedes").subscribe({
+      next: (rows) => {
+        const actual = rows.find((h) => Number(h.ID_USUARIO) === userId);
+        this.idHuespedActual = actual?.ID_HUESPED ?? null;
+
+        if (this.idHuespedActual) {
+          this.api.get<any[]>("/reservas").subscribe({
+            next: (reservas) => {
+              this.reservasActivas = reservas
+                .filter((r) => Number(r.ID_HUESPED) === this.idHuespedActual && 
+                  ["PENDIENTE", "CONFIRMADA"].includes(String(r.ESTADO).toUpperCase().trim()))
+                .sort((a, b) => Number(b.ID_RESERVA) - Number(a.ID_RESERVA));
+            }
+          });
+        }
+      }
+    });
+  }
+
   verDetalleServicio(s: Servicio): void {
     this.trackingService.registrarVisita("Servicios", `Ver servicio ${s.NOMBRE}`);
     this.servicioSeleccionado = s;
     this.mostrarModal = true;
+    this.mensajeExito = "";
+    this.errorAdquisicion = "";
+    this.idReservaSeleccionada = null;
+    this.cantidadAdquirir = 1;
+    this.cargarHuespedYReservas(); // recargar para tener estado fresco
+  }
+
+  adquirir(): void {
+    if (!this.idReservaSeleccionada || !this.servicioSeleccionado) return;
+    this.adquiriendo = true;
+    this.errorAdquisicion = "";
+    this.mensajeExito = "";
+
+    const payload = {
+      id_reserva: this.idReservaSeleccionada,
+      id_servicio: this.servicioSeleccionado.ID_SERVICIO,
+      cantidad: this.cantidadAdquirir
+    };
+
+    this.api.post("/servicios/adquirir", payload).subscribe({
+      next: () => {
+        this.adquiriendo = false;
+        this.mensajeExito = "Servicio adquirido exitosamente y cargado a tu factura final.";
+        this.trackingService.registrarVisita("Servicios", `Adquirió servicio ${this.servicioSeleccionado?.NOMBRE}`);
+        this.idReservaSeleccionada = null;
+        this.cantidadAdquirir = 1;
+      },
+      error: (err) => {
+        this.adquiriendo = false;
+        this.errorAdquisicion = err?.error?.message || "No se pudo adquirir el servicio. Inténtalo de nuevo.";
+      }
+    });
   }
 
   cerrarModal(): void {
     this.mostrarModal = false;
     this.servicioSeleccionado = null;
+    this.mensajeExito = "";
+    this.errorAdquisicion = "";
   }
 
   imagenPara(id: number): string {

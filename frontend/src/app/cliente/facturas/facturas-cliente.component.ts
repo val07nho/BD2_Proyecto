@@ -89,6 +89,7 @@ interface FacturaView extends Factura {
                   <th>IGV</th>
                   <th>Total</th>
                   <th>Estado</th>
+                  <th>Acción</th>
                 </tr>
               </thead>
               <tbody>
@@ -106,6 +107,9 @@ interface FacturaView extends Factura {
                         {{ factura.ESTADO_PAGO || 'PENDIENTE' }}
                       </span>
                     </td>
+                    <td>
+                      <button class="btn action-btn" type="button" (click)="verDetalle(factura.ID_FACTURA)">Detalle</button>
+                    </td>
                   </tr>
                 }
               </tbody>
@@ -113,6 +117,136 @@ interface FacturaView extends Factura {
           </div>
         }
       </section>
+
+      <!-- Modal de Detalle de Factura Desglosado -->
+      @if (mostrarModal && facturaDetalle) {
+        <div class="modal-overlay" (click)="cerrarModal()">
+          <div class="modal-card card detailed-invoice-modal" (click)="$event.stopPropagation()">
+            <div class="modal-header">
+              <h2>Comprobante de Pago Detallado</h2>
+              <span class="invoice-number">Factura #{{ facturaDetalle.factura.ID_FACTURA }}</span>
+              <button class="close-btn" type="button" (click)="cerrarModal()">&times;</button>
+            </div>
+            
+            <div class="modal-body detailed-body">
+              <section class="invoice-meta-info">
+                <div>
+                  <strong>Fecha Emisión:</strong> {{ facturaDetalle.factura.FECHA_EMISION | date: 'yyyy-MM-dd' }}
+                </div>
+                <div>
+                  <strong>Estado:</strong> 
+                  <span class="pill" [class.pagado]="normalizar(facturaDetalle.factura.ESTADO_PAGO) === 'PAGADO'" [class.pendiente]="normalizar(facturaDetalle.factura.ESTADO_PAGO) === 'PENDIENTE'" [class.anulado]="normalizar(facturaDetalle.factura.ESTADO_PAGO) === 'ANULADO'">
+                    {{ facturaDetalle.factura.ESTADO_PAGO || 'PENDIENTE' }}
+                  </span>
+                </div>
+              </section>
+
+              <!-- Sección 1: Alojamiento (Habitación) -->
+              <section class="invoice-section">
+                <h3>Alojamiento</h3>
+                <table class="detail-table">
+                  <thead>
+                    <tr>
+                      <th>Habitación</th>
+                      <th>Tipo</th>
+                      <th>Precio Noche</th>
+                      <th>Noches</th>
+                      <th>Subtotal</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>#{{ facturaDetalle.reserva.NUMERO_HABITACION || '-' }}</td>
+                      <td>{{ facturaDetalle.reserva.TIPO_HABITACION || '-' }}</td>
+                      <td>S/ {{ (facturaDetalle.reserva.PRECIO_NOCHE || 0) | number: '1.2-2' }}</td>
+                      <td>{{ facturaDetalle.reserva.CANTIDAD_NOCHES || 0 }}</td>
+                      <td>S/ {{ (facturaDetalle.reserva.DETALLE_SUBTOTAL || 0) | number: '1.2-2' }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </section>
+
+              <!-- Sección 2: Servicios Consumidos (si aplica) -->
+              @if (facturaDetalle.servicios && facturaDetalle.servicios.length > 0) {
+                <section class="invoice-section">
+                  <h3>Servicios Consumidos</h3>
+                  <table class="detail-table">
+                    <thead>
+                      <tr>
+                        <th>Servicio</th>
+                        <th>Precio Unit.</th>
+                        <th>Cantidad</th>
+                        <th>Fecha Consumo</th>
+                        <th>Subtotal</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (s of facturaDetalle.servicios; track s.ID_CONSUMO) {
+                        <tr>
+                          <td>{{ s.NOMBRE_SERVICIO }}</td>
+                          <td>S/ {{ s.PRECIO_SERVICIO | number: '1.2-2' }}</td>
+                          <td>{{ s.CANTIDAD }}</td>
+                          <td>{{ s.FECHA | date: 'yyyy-MM-dd HH:mm' }}</td>
+                          <td>S/ {{ s.SUBTOTAL | number: '1.2-2' }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </section>
+              }
+
+              <!-- Sección 3: Eventos Reservados (si aplica) -->
+              @if (facturaDetalle.eventos && facturaDetalle.eventos.length > 0) {
+                <section class="invoice-section">
+                  <h3>Eventos y Actividades</h3>
+                  <table class="detail-table">
+                    <thead>
+                      <tr>
+                        <th>Evento / Actividad</th>
+                        <th>Precio Entrada</th>
+                        <th>Cantidad</th>
+                        <th>Fecha Evento</th>
+                        <th>Subtotal</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (e of facturaDetalle.eventos; track e.ID_RESERVA_EVENTO) {
+                        <tr>
+                          <td>{{ e.NOMBRE_EVENTO }}</td>
+                          <td>S/ {{ e.COSTO_EVENTO | number: '1.2-2' }}</td>
+                          <td>{{ e.CANTIDAD }}</td>
+                          <td>{{ e.FECHA_EVENTO | date: 'yyyy-MM-dd' }}</td>
+                          <td>S/ {{ e.SUBTOTAL | number: '1.2-2' }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </section>
+              }
+
+              <!-- Resumen Final -->
+              <section class="invoice-totalizer">
+                <div class="row">
+                  <span>Subtotal Factura:</span>
+                  <strong>S/ {{ (facturaDetalle.factura.SUBTOTAL || 0) | number: '1.2-2' }}</strong>
+                </div>
+                <div class="row">
+                  <span>IGV (18%):</span>
+                  <strong>S/ {{ (facturaDetalle.factura.IGV || 0) | number: '1.2-2' }}</strong>
+                </div>
+                <div class="row total-row">
+                  <span>Total Neto a Pagar:</span>
+                  <strong>S/ {{ (facturaDetalle.factura.TOTAL || 0) | number: '1.2-2' }}</strong>
+                </div>
+              </section>
+            </div>
+            
+            <div class="modal-actions" style="border-top: 1px solid var(--border); padding: 1rem 1.5rem; display: flex; justify-content: flex-end;">
+              <button class="btn primary" type="button" (click)="cerrarModal()">Cerrar</button>
+            </div>
+          </div>
+        </div>
+      }
     </section>
   `,
   styles: [
@@ -172,6 +306,130 @@ interface FacturaView extends Factura {
       .anulado { background: rgba(179,38,30,.12); color: #8A1E18; }
       .empty { margin: 0; color: var(--muted); }
       .alert.error { border-radius: 10px; padding: .72rem .92rem; background: rgba(179,38,30,.1); color: #8A1E18; border: 1px solid rgba(179,38,30,.25); }
+      
+      .action-btn {
+        background: var(--navy-700);
+        color: var(--white);
+        padding: 0.35rem 0.65rem;
+        font-size: 0.76rem;
+      }
+      .action-btn:hover {
+        background: var(--navy-900);
+      }
+      
+      /* Modal Desglosado */
+      .modal-overlay {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(11,37,64,0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+        backdrop-filter: blur(4px);
+      }
+      .detailed-invoice-modal {
+        max-width: 700px !important;
+        width: 90% !important;
+        max-height: 85vh;
+        overflow-y: auto;
+      }
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--border);
+        padding: 1rem 1.5rem;
+        position: relative;
+      }
+      .modal-header h2 {
+        margin: 0;
+        font-family: 'Playfair Display', serif;
+        font-size: 1.3rem;
+        color: var(--navy-900);
+      }
+      .invoice-number {
+        font-weight: 700;
+        color: var(--gold-500);
+        font-size: 1rem;
+      }
+      .close-btn {
+        position: absolute;
+        top: 0.75rem;
+        right: 0.75rem;
+        background: rgba(255,255,255,0.8);
+        border: none;
+        border-radius: 50%;
+        width: 32px;
+        height: 32px;
+        font-size: 1.5rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--navy-900);
+      }
+      .detailed-body {
+        padding: 1.5rem;
+        display: grid;
+        gap: 1.25rem;
+      }
+      .invoice-meta-info {
+        display: flex;
+        gap: 2rem;
+        background: var(--cream-50);
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        font-size: 0.88rem;
+      }
+      .invoice-section h3 {
+        margin: 0 0 0.5rem 0;
+        font-size: 0.95rem;
+        font-family: 'Playfair Display', serif;
+        color: var(--navy-900);
+        border-left: 3px solid var(--gold-500);
+        padding-left: 0.5rem;
+      }
+      .detail-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 0.25rem;
+      }
+      .detail-table th, .detail-table td {
+        padding: 0.5rem;
+        font-size: 0.8rem;
+        border: 1px solid var(--border);
+      }
+      .detail-table th {
+        background: var(--cream-50);
+        font-weight: 700;
+        color: var(--muted);
+      }
+      .invoice-totalizer {
+        border-top: 1px dashed var(--border);
+        padding-top: 1rem;
+        display: grid;
+        justify-content: end;
+        gap: 0.4rem;
+      }
+      .invoice-totalizer .row {
+        display: flex;
+        justify-content: space-between;
+        width: 250px;
+        font-size: 0.86rem;
+      }
+      .invoice-totalizer .row strong {
+        color: var(--navy-900);
+      }
+      .total-row {
+        border-top: 1px solid var(--border);
+        padding-top: 0.4rem;
+        font-size: 1rem !important;
+        font-weight: 800;
+      }
+      .total-row strong {
+        color: var(--gold-500) !important;
+      }
 
       @media (max-width: 960px) {
         .hero-stats { grid-template-columns: 1fr; }
@@ -189,8 +447,28 @@ export class FacturasClienteComponent implements OnInit {
   totalFacturado = 0;
   pendientes = 0;
 
+  mostrarModal = false;
+  facturaDetalle: any = null;
+
   async ngOnInit() {
     await this.cargar();
+  }
+
+  verDetalle(idFactura: number): void {
+    this.api.get<any>(`/facturas/${idFactura}/detalle`).subscribe({
+      next: (res) => {
+        this.facturaDetalle = res;
+        this.mostrarModal = true;
+      },
+      error: (err) => {
+        this.error = err?.error?.message || "No se pudo obtener el desglose detallado de la factura.";
+      }
+    });
+  }
+
+  cerrarModal(): void {
+    this.mostrarModal = false;
+    this.facturaDetalle = null;
   }
 
   async cargar() {

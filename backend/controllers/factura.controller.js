@@ -139,9 +139,101 @@ async function deleteFactura(req, res, next) {
   }
 }
 
+async function getFacturaDetalle(req, res, next) {
+  let connection;
+  try {
+    const { id } = req.params;
+    connection = await getOracleConnection();
+
+    // 1. Obtener la factura
+    const facturaRes = await connection.execute(
+      "SELECT * FROM FACTURA WHERE ID_FACTURA = :id",
+      { id: Number(id) },
+      { outFormat }
+    );
+
+    if (facturaRes.rows.length === 0) {
+      return res.status(404).json({ message: "Factura no encontrada." });
+    }
+
+    const factura = facturaRes.rows[0];
+
+    // 2. Obtener la reserva para validar pertenencia y obtener datos
+    const reservaRes = await connection.execute(
+      `SELECT R.ID_RESERVA, R.ID_HUESPED, R.FECHA_RESERVA, R.FECHA_INGRESO, R.FECHA_SALIDA, R.ESTADO, R.TOTAL,
+              D.PRECIO_NOCHE, D.CANTIDAD_NOCHES, D.SUBTOTAL AS DETALLE_SUBTOTAL,
+              H.NUMERO AS NUMERO_HABITACION, H.TIPO AS TIPO_HABITACION
+       FROM RESERVA R
+       LEFT JOIN DETALLE_RESERVA D ON D.ID_RESERVA = R.ID_RESERVA
+       LEFT JOIN HABITACION H ON H.ID_HABITACION = D.ID_HABITACION
+       WHERE R.ID_RESERVA = :id_reserva`,
+      { id_reserva: factura.ID_RESERVA },
+      { outFormat }
+    );
+
+    if (reservaRes.rows.length === 0) {
+      return res.status(404).json({ message: "Reserva asociada a la factura no encontrada." });
+    }
+
+    const reserva = reservaRes.rows[0];
+
+    // 3. Validar permisos del cliente
+    if (req.user.role === "CLIENTE") {
+      const huespedResult = await connection.execute(
+        "SELECT ID_HUESPED FROM HUESPED WHERE ID_USUARIO = :id_usuario",
+        { id_usuario: req.user.id },
+        { outFormat }
+      );
+      if (huespedResult.rows.length === 0) {
+        return res.status(403).json({ message: "El usuario no tiene un huesped asociado." });
+      }
+      const idHuespedActual = huespedResult.rows[0].ID_HUESPED;
+      if (Number(reserva.ID_HUESPED) !== Number(idHuespedActual)) {
+        return res.status(403).json({ message: "No tienes permiso para ver esta factura." });
+      }
+    }
+
+    // 4. Obtener servicios consumidos
+    const serviciosRes = await connection.execute(
+      `SELECT C.ID_CONSUMO, C.CANTIDAD, C.SUBTOTAL, C.FECHA,
+              S.NOMBRE AS NOMBRE_SERVICIO, S.PRECIO AS PRECIO_SERVICIO
+       FROM CONSUMO_SERVICIO C
+       INNER JOIN SERVICIO S ON S.ID_SERVICIO = C.ID_SERVICIO
+       WHERE C.ID_RESERVA = :id_reserva
+       ORDER BY C.FECHA DESC`,
+      { id_reserva: factura.ID_RESERVA },
+      { outFormat }
+    );
+
+    // 5. Obtener eventos reservados
+    const eventosRes = await connection.execute(
+      `SELECT RE.ID_RESERVA_EVENTO, RE.CANTIDAD, RE.SUBTOTAL,
+              E.NOMBRE AS NOMBRE_EVENTO, E.COSTO AS COSTO_EVENTO, E.FECHA_EVENTO
+       FROM RESERVA_EVENTO RE
+       INNER JOIN EVENTO E ON E.ID_EVENTO = RE.ID_EVENTO
+       WHERE RE.ID_RESERVA = :id_reserva
+       ORDER BY E.FECHA_EVENTO ASC`,
+      { id_reserva: factura.ID_RESERVA },
+      { outFormat }
+    );
+
+    res.json({
+      factura,
+      reserva,
+      servicios: serviciosRes.rows,
+      eventos: eventosRes.rows
+    });
+  } catch (error) {
+    next(error);
+  } finally {
+    if (connection) await connection.close();
+  }
+}
+
 module.exports = {
   listFacturas,
   createFactura,
   updateFactura,
-  deleteFactura
+  deleteFactura,
+  getFacturaDetalle
 };
