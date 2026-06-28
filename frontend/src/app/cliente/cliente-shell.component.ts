@@ -74,6 +74,16 @@ import { AuthService } from "../core/services/auth.service";
             Reservas
           </a>
 
+          <a routerLink="/cliente/servicios" routerLinkActive="active">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 16a9 9 0 0 1 18 0"/>
+              <path d="M2.5 16h19"/>
+              <path d="M12 7V4"/>
+              <path d="M10 4h4"/>
+            </svg>
+            Servicios
+          </a>
+
           <a routerLink="/cliente/encuestas" routerLinkActive="active">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <rect x="5" y="6" width="14" height="15" rx="2"/>
@@ -83,14 +93,6 @@ import { AuthService } from "../core/services/auth.service";
               <path d="M9 19h3"/>
             </svg>
             Encuestas
-          </a>
-
-          <a routerLink="/cliente/perfil" routerLinkActive="active">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="8" r="3.4"/>
-              <path d="M5 20c.7-3.6 3.2-5.8 7-5.8s6.3 2.2 7 5.8"/>
-            </svg>
-            Perfil
           </a>
         </nav>
 
@@ -104,9 +106,9 @@ import { AuthService } from "../core/services/auth.service";
           </button>
 
           <div class="profile" (click)="toggleMenu()">
-            <span class="profile-avatar">AG</span>
+            <span class="profile-avatar">{{ getAvatarInitials() }}</span>
             <div class="profile-text">
-              <strong>Ana García</strong>
+              <strong>{{ getNombre() }}</strong>
               <small>Cliente</small>
             </div>
             <svg class="chevron" [class.open]="menuOpen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -449,5 +451,19 @@ export class ClienteShellComponent {
 
   logout(): void {
     this.authService.logout();
+  }
+
+  getNombre(): string {
+    return this.authService.getUserNombre();
+  }
+
+  getAvatarInitials(): string {
+    const nombre = this.getNombre();
+    if (!nombre) return "U";
+    const parts = nombre.split(" ").filter(Boolean);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return parts[0] ? parts[0][0].toUpperCase() : "U";
   }
 }

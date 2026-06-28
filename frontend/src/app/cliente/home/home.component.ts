@@ -1,5 +1,10 @@
 import { CommonModule } from "@angular/common";
-import { Component } from "@angular/core";
+import { Component, OnInit, inject } from "@angular/core";
+import { RouterLink } from "@angular/router";
+import { firstValueFrom } from "rxjs";
+import { AuthService } from "../../core/services/auth.service";
+import { ApiService } from "../../core/services/api.service";
+import { TrackingService } from "../../core/services/tracking.service";
 
 interface AccionRapida {
   titulo: string;
@@ -16,7 +21,7 @@ interface Oferta {
 @Component({
   selector: "app-cliente-home",
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterLink],
   template: `
     <section class="cliente-home">
       <section class="hero-row">
@@ -91,7 +96,7 @@ interface Oferta {
         <article class="card reservation-card">
           <div class="card-head">
             <h3>Tu próxima reserva</h3>
-            <a class="link-gold" href="javascript:void(0)">
+            <a class="link-gold" routerLink="/cliente/reservas">
               Ver todas mis reservas
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="5" y1="12" x2="19" y2="12"/>
@@ -100,45 +105,54 @@ interface Oferta {
             </a>
           </div>
 
-          <div class="reservation-body">
-            <img class="room-thumb" src="https://picsum.photos/seed/aurea-room/420/420" alt="Habitación Deluxe Ocean View" />
+          @if (proximaReserva) {
+            <div class="reservation-body">
+              <img class="room-thumb" src="https://picsum.photos/seed/aurea-room/420/420" alt="Habitación Deluxe Ocean View" />
 
-            <div class="reservation-info">
-              <span class="status-pill">{{ proximaReserva.estado }}</span>
-              <h4>{{ proximaReserva.habitacion }}</h4>
+              <div class="reservation-info">
+                <span class="status-pill">{{ proximaReserva.estado }}</span>
+                <h4>{{ proximaReserva.habitacion }}</h4>
 
-              <ul class="meta-list">
-                <li>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="5" width="18" height="16" rx="2"/>
-                    <path d="M3 9.5h18"/>
-                    <path d="M8 3v4"/>
-                    <path d="M16 3v4"/>
-                  </svg>
-                  {{ proximaReserva.fechas }}
-                </li>
-                <li>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="8" r="3.4"/>
-                    <path d="M5 20c.7-3.6 3.2-5.8 7-5.8s6.3 2.2 7 5.8"/>
-                  </svg>
-                  {{ proximaReserva.huespedes }}
-                </li>
-                <li>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 21s7-7.2 7-12a7 7 0 1 0-14 0c0 4.8 7 12 7 12Z"/>
-                    <circle cx="12" cy="9" r="2.4"/>
-                  </svg>
-                  {{ proximaReserva.lugar }}
-                </li>
-              </ul>
+                <ul class="meta-list">
+                  <li>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="3" y="5" width="18" height="16" rx="2"/>
+                      <path d="M3 9.5h18"/>
+                      <path d="M8 3v4"/>
+                      <path d="M16 3v4"/>
+                    </svg>
+                    {{ proximaReserva.fechas }}
+                  </li>
+                  <li>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="8" r="3.4"/>
+                      <path d="M5 20c.7-3.6 3.2-5.8 7-5.8s6.3 2.2 7 5.8"/>
+                    </svg>
+                    {{ proximaReserva.huespedes }}
+                  </li>
+                  <li>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M12 21s7-7.2 7-12a7 7 0 1 0-14 0c0 4.8 7 12 7 12Z"/>
+                      <circle cx="12" cy="9" r="2.4"/>
+                    </svg>
+                    {{ proximaReserva.lugar }}
+                  </li>
+                </ul>
 
-              <div class="reservation-actions">
-                <button class="btn primary" type="button">Ver detalles</button>
-                <button class="btn ghost" type="button">Modificar reserva</button>
+                <div class="reservation-actions">
+                  <button class="btn primary" type="button" routerLink="/cliente/reservas">Ver detalles</button>
+                  <button class="btn ghost" type="button" routerLink="/cliente/reservas">Modificar reserva</button>
+                </div>
               </div>
             </div>
-          </div>
+          } @else {
+            <div class="no-reservation-body" style="padding: 2.2rem; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.9rem; height: 80%; box-sizing: border-box;">
+              <p style="color: var(--text-600); margin: 0; font-size: 0.95rem;">No tienes próximas estancias programadas.</p>
+              <button class="btn primary" type="button" routerLink="/cliente/habitaciones" style="background: linear-gradient(135deg, var(--gold-300), var(--gold-500)); color: var(--navy-950); font-weight: 800; border: none; border-radius: 12px; padding: 0.65rem 1.3rem; cursor: pointer; box-shadow: 0 10px 20px rgba(201, 162, 39, 0.25);">
+                Explorar habitaciones
+              </button>
+            </div>
+          }
         </article>
 
         <article class="card actions-card">
@@ -199,9 +213,9 @@ interface Oferta {
 
       <section class="offers-section">
         <div class="section-head">
-          <h3>Ofertas exclusivas para ti</h3>
-          <a class="link-gold" href="javascript:void(0)">
-            Ver todas las ofertas
+          <h3>Recomendaciones para ti</h3>
+          <a class="link-gold" routerLink="/cliente/recomendaciones">
+            Ver todas las recomendaciones
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="5" y1="12" x2="19" y2="12"/>
               <polyline points="13 6 19 12 13 18"/>
@@ -210,20 +224,23 @@ interface Oferta {
         </div>
 
         <div class="offers-grid">
-          @for (oferta of ofertas; track oferta.titulo) {
-            <article class="offer-card" [style.background-image]="'url(' + oferta.imagen + ')'">
-              <div class="offer-overlay">
-                <h4>{{ oferta.titulo }}</h4>
-                <p>{{ oferta.descripcion }}</p>
-                <a class="offer-link" href="javascript:void(0)">
-                  Ver más
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="5" y1="12" x2="19" y2="12"/>
-                    <polyline points="13 6 19 12 13 18"/>
-                  </svg>
-                </a>
-              </div>
-            </article>
+          @if (cargandoRecomendaciones) {
+            <p style="grid-column: 1 / -1; text-align: center; color: var(--text-600); padding: 1.5rem 0;">Cargando recomendaciones...</p>
+          } @else if (recomendacionesHome.length === 0) {
+            <p style="grid-column: 1 / -1; text-align: center; color: var(--text-600); padding: 1.5rem 0;">Estamos personalizando sugerencias exclusivas para ti. ¡Vuelve pronto!</p>
+          } @else {
+            @for (item of recomendacionesHome; track $index) {
+              <article class="offer-card" style="background-image: linear-gradient(rgba(11, 37, 64, 0.4), rgba(11, 37, 64, 0.8)), url('https://picsum.photos/seed/aurea-recom-card/500/380');">
+                <div class="offer-overlay" style="opacity: 1; background: transparent; transform: none; padding: 1.5rem; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start; height: 100%;">
+                  <span class="category-badge-home" style="display: inline-block; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.68rem; font-weight: 800; text-transform: uppercase; background: var(--gold-500); color: var(--navy-950); margin-bottom: 0.4rem;">
+                    {{ item.categoria }}
+                  </span>
+                  <h4 style="color: var(--white); font-family: 'Playfair Display', serif; font-size: 1.25rem; margin: 0 0 0.3rem;">{{ item.nombre }}</h4>
+                  <p style="color: rgba(255,255,255,0.85); font-size: 0.82rem; margin: 0 0 0.6rem; line-height: 1.4;">{{ item.descripcion }}</p>
+                  <span style="font-size: 0.72rem; color: var(--gold-300); font-weight: 700;">Prioridad: {{ item.prioridad >= 4 ? 'Alta' : (item.prioridad >= 3 ? 'Media' : 'Baja') }}</span>
+                </div>
+              </article>
+            }
           }
         </div>
       </section>
@@ -742,22 +759,113 @@ interface Oferta {
     }
   `]
 })
-export class HomeComponent {
-  clienteNombre = "Ana García";
+export class HomeComponent implements OnInit {
+  private readonly authService = inject(AuthService);
+  private readonly apiService = inject(ApiService);
+  private readonly trackingService = inject(TrackingService);
+  clienteNombre = "";
+  idHuespedActual: number | null = null;
 
   resumenCuenta = {
-    reservas: 3,
-    estancias: 2,
-    puntos: 1250,
+    reservas: 0,
+    estancias: 0,
+    puntos: 0,
   };
 
-  proximaReserva = {
-    estado: "Confirmada",
-    habitacion: "Habitación Deluxe Ocean View",
-    fechas: "15 jun. 2025 - 18 jun. 2025 (3 noches)",
-    huespedes: "2 Adultos",
-    lugar: "Aurea Resort & Spa",
-  };
+  proximaReserva: any = null;
+
+  async ngOnInit() {
+    this.trackingService.registrarVisita("Inicio", "Ingresó al módulo");
+    this.clienteNombre = this.authService.getUserNombre();
+    await this.cargarDatosHome();
+  }
+
+  async cargarDatosHome() {
+    try {
+      const userId = this.authService.getUserId();
+      if (!userId) return;
+
+      const huespedes = await firstValueFrom(this.apiService.get<any[]>("/huespedes"));
+      const actual = huespedes.find((h) => Number(h.ID_USUARIO) === userId);
+      this.idHuespedActual = actual?.ID_HUESPED ?? null;
+
+      if (!this.idHuespedActual) return;
+
+      const todasLasReservas = await firstValueFrom(this.apiService.get<any[]>("/reservas"));
+      const misReservas = todasLasReservas.filter((r) => Number(r.ID_HUESPED) === Number(this.idHuespedActual));
+
+      const totalReservas = misReservas.length;
+      const totalEstancias = misReservas.filter((r) => {
+        const est = String(r.ESTADO).toUpperCase();
+        return est === "FINALIZADA" || est === "CONFIRMADA";
+      }).length;
+      const totalPuntos = totalReservas * 500;
+
+      this.resumenCuenta = {
+        reservas: totalReservas,
+        estancias: totalEstancias,
+        puntos: totalPuntos
+      };
+
+      const hoy = new Date();
+      hoy.setHours(0, 0, 0, 0);
+
+      const proximas = misReservas.filter((r) => {
+        const est = String(r.ESTADO).toUpperCase();
+        if (est === "CANCELADA") return false;
+        
+        const fechaSalida = new Date(r.FECHA_SALIDA);
+        return fechaSalida >= hoy;
+      });
+
+      proximas.sort((a, b) => new Date(a.FECHA_INGRESO).getTime() - new Date(b.FECHA_INGRESO).getTime());
+
+      if (proximas.length > 0) {
+        const prox = proximas[0];
+        this.proximaReserva = {
+          estado: prox.ESTADO,
+          habitacion: prox.NUMERO_HABITACION ? `Habitación #${prox.NUMERO_HABITACION}` : "Habitación Reservada",
+          fechas: `${this.formatearFechaSimple(prox.FECHA_INGRESO)} - ${this.formatearFechaSimple(prox.FECHA_SALIDA)} (${prox.CANTIDAD_NOCHES || this.calcularNoches(prox.FECHA_INGRESO, prox.FECHA_SALIDA)} noches)`,
+          huespedes: "2 Adultos",
+          lugar: "Aurea Resort & Spa"
+        };
+      } else {
+        this.proximaReserva = null;
+      }
+
+      // 5. Cargar Recomendaciones
+      this.cargandoRecomendaciones = true;
+      try {
+        const recoms = await firstValueFrom(this.apiService.get<any[]>(`/recomendaciones/huesped/${this.idHuespedActual}`));
+        if (recoms && recoms.length > 0) {
+          this.recomendacionesHome = (recoms[0].recomendaciones || []).slice(0, 3);
+        } else {
+          this.recomendacionesHome = [];
+        }
+      } catch (e) {
+        this.recomendacionesHome = [];
+      } finally {
+        this.cargandoRecomendaciones = false;
+      }
+    } catch (err) {
+      console.error("Error cargando estadísticas del Home:", err);
+    }
+  }
+
+  formatearFechaSimple(fechaStr: string): string {
+    if (!fechaStr) return "";
+    const date = new Date(fechaStr);
+    const meses = ["ene.", "feb.", "mar.", "abr.", "may.", "jun.", "jul.", "ago.", "sep.", "oct.", "nov.", "dic."];
+    return `${date.getDate()} ${meses[date.getMonth()]}`;
+  }
+
+  calcularNoches(inicio: string, fin: string): number {
+    if (!inicio || !fin) return 1;
+    const start = new Date(`${inicio.slice(0,10)}T00:00:00`);
+    const end = new Date(`${fin.slice(0,10)}T00:00:00`);
+    const diff = end.getTime() - start.getTime();
+    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  }
 
   accionesRapidas: AccionRapida[] = [
     { titulo: "Nueva reserva", descripcion: "Reserva tu próxima estancia", icono: "reserva" },
@@ -766,21 +874,6 @@ export class HomeComponent {
     { titulo: "Contáctanos", descripcion: "Estamos para ayudarte", icono: "contacto" },
   ];
 
-  ofertas: Oferta[] = [
-    {
-      titulo: "Spa & Relajación",
-      descripcion: "Disfruta 20% de descuento en todos nuestros tratamientos.",
-      imagen: "https://picsum.photos/seed/aurea-spa/500/380",
-    },
-    {
-      titulo: "Cena Romántica",
-      descripcion: "Paquete especial con cena y decoración incluida.",
-      imagen: "https://picsum.photos/seed/aurea-dinner/500/380",
-    },
-    {
-      titulo: "Diversión en Familia",
-      descripcion: "Niños se hospedan gratis en determinadas fechas.",
-      imagen: "https://picsum.photos/seed/aurea-family/500/380",
-    },
-  ];
+  cargandoRecomendaciones = true;
+  recomendacionesHome: any[] = [];
 }

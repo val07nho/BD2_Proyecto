@@ -7,6 +7,7 @@ import { AdminCrudPageComponent } from "./admin-crud-page.component";
 import { UsuariosAdminComponent } from "./usuarios/usuarios-admin.component";
 import { RolesAdminComponent } from "./roles/roles-admin.component";
 import { SectionPageComponent } from "../shared/components/section-page.component";
+import { RecomendacionesAdminComponent } from "./recomendaciones/recomendaciones-admin.component";
 
 export const administradorRoutes: Routes = [
   {
@@ -22,6 +23,7 @@ export const administradorRoutes: Routes = [
       { path: "servicios", component: AdminCrudPageComponent },
       { path: "facturas", component: AdminCrudPageComponent },
       { path: "pagos", component: AdminCrudPageComponent },
+      { path: "recomendaciones", component: RecomendacionesAdminComponent },
       { path: "reportes", component: SectionPageComponent, data: { title: "Reportes", description: "Reportes administrativos y operativos." } }
     ]
   }

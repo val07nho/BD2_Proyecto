@@ -89,9 +89,70 @@ async function deleteHistorial(req, res, next) {
   }
 }
 
+async function registrarVisita(req, res, next) {
+  try {
+    const db = getMongoDb();
+    const idHuesped = toNumber(req.params.idHuesped);
+    const { modulo, accion } = req.body;
+
+    if (!idHuesped) {
+      return res.status(400).json({ message: "idHuesped invalido" });
+    }
+
+    await db.collection(COLLECTION).updateOne(
+      { idHuesped },
+      { 
+        $push: { 
+          visitas: { 
+            fecha: new Date(), 
+            modulo: String(modulo || ""), 
+            accion: String(accion || "") 
+          } 
+        } 
+      },
+      { upsert: true }
+    );
+
+    res.json({ message: "Visita registrada" });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function registrarBusqueda(req, res, next) {
+  try {
+    const db = getMongoDb();
+    const idHuesped = toNumber(req.params.idHuesped);
+    const { texto } = req.body;
+
+    if (!idHuesped) {
+      return res.status(400).json({ message: "idHuesped invalido" });
+    }
+
+    await db.collection(COLLECTION).updateOne(
+      { idHuesped },
+      { 
+        $push: { 
+          busquedas: { 
+            fecha: new Date(), 
+            texto: String(texto || "") 
+          } 
+        } 
+      },
+      { upsert: true }
+    );
+
+    res.json({ message: "Búsqueda registrada" });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   listHistoriales,
   getHistorialByHuesped,
   upsertHistorial,
-  deleteHistorial
+  deleteHistorial,
+  registrarVisita,
+  registrarBusqueda
 };

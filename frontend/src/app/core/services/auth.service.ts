@@ -30,6 +30,7 @@ export class AuthService {
 
   logout() {
     localStorage.removeItem(this.tokenKey);
+    localStorage.removeItem("hrms_user_nombre");
     this.router.navigate(["/auth/login"]);
   }
 
@@ -69,6 +70,25 @@ export class AuthService {
     return typeof username === "string" ? username : null;
   }
 
+  getUserNombre(): string {
+    const stored = localStorage.getItem("hrms_user_nombre");
+    if (stored) return stored;
+
+    const token = this.getToken();
+    if (!token) return "Usuario";
+
+    const payload = this.decodeToken(token);
+    const nombre = payload?.["nombre"];
+    if (typeof nombre === "string" && nombre) return nombre;
+
+    const username = this.getUsername();
+    if (username) {
+      return username.split("@")[0];
+    }
+
+    return "Usuario";
+  }
+
   navigateByRole(role: UserRole | null) {
     if (role === "ADMIN") {
       this.router.navigate(["/administrador"]);
@@ -87,6 +107,9 @@ export class AuthService {
     if (!response?.token) return;
 
     localStorage.setItem(this.tokenKey, response.token);
+    if (response.user?.nombre) {
+      localStorage.setItem("hrms_user_nombre", response.user.nombre);
+    }
   }
 
   private normalizeRole(rawRole: string | undefined): UserRole | null {

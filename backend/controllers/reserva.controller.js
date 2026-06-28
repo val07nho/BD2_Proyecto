@@ -49,13 +49,16 @@ async function createReserva(req, res, next) {
       id_habitacion,
       precio_noche,
       cantidad_noches,
-      total
+      total,
+      metodo_pago // Campo opcional para simular el pago al reservar
     } = req.body;
     connection = await getOracleConnection();
 
     const nights = Number(cantidad_noches || 1);
     const subtotal = Number(precio_noche || 0) * nights;
+    const totalValue = total || subtotal;
 
+    // 1. Insertar en RESERVA (con autoCommit: false)
     await connection.execute(
       `INSERT INTO RESERVA (ID_RESERVA, FECHA_RESERVA, FECHA_INGRESO, FECHA_SALIDA, ESTADO, ID_HUESPED, TOTAL)
        VALUES (SEQ_RESERVA.NEXTVAL, SYSDATE, TO_DATE(:fecha_ingreso, 'YYYY-MM-DD'), TO_DATE(:fecha_salida, 'YYYY-MM-DD'), :estado, :id_huesped, :total)`,
@@ -64,14 +67,15 @@ async function createReserva(req, res, next) {
         fecha_salida,
         estado: normalizeEstado(estado),
         id_huesped,
-        total: total || subtotal || null
+        total: totalValue
       },
-      { autoCommit: true }
+      { autoCommit: false }
     );
 
     const reservaIdResult = await connection.execute("SELECT SEQ_RESERVA.CURRVAL AS ID_RESERVA FROM DUAL", [], { outFormat });
     const reservaId = reservaIdResult.rows[0].ID_RESERVA;
 
+    // 2. Insertar en DETALLE_RESERVA
     if (id_habitacion) {
       await connection.execute(
         `INSERT INTO DETALLE_RESERVA (ID_DETALLE, ID_RESERVA, ID_HABITACION, PRECIO_NOCHE, CANTIDAD_NOCHES, SUBTOTAL)
@@ -81,7 +85,41 @@ async function createReserva(req, res, next) {
           id_habitacion,
           precio_noche: precio_noche || null,
           cantidad_noches: nights,
-          subtotal: subtotal || null
+          subtotal: subtotal
+        },
+        { autoCommit: false }
+      );
+    }
+
+    // 3. Si se proporciona método de pago, simular el pago (crear Factura y Pago)
+    if (metodo_pago) {
+      const subtotalFactura = Number((totalValue / 1.18).toFixed(2));
+      const igvFactura = Number((totalValue - subtotalFactura).toFixed(2));
+
+      // Insertar en FACTURA
+      await connection.execute(
+        `INSERT INTO FACTURA (ID_FACTURA, ID_RESERVA, FECHA_EMISION, SUBTOTAL, IGV, TOTAL, ESTADO_PAGO)
+         VALUES (SEQ_FACTURA.NEXTVAL, :id_reserva, SYSDATE, :subtotal, :igv, :total, 'PAGADO')`,
+        {
+          id_reserva: reservaId,
+          subtotal: subtotalFactura,
+          igv: igvFactura,
+          total: totalValue
+        },
+        { autoCommit: false }
+      );
+
+      const facturaIdResult = await connection.execute("SELECT SEQ_FACTURA.CURRVAL AS ID_FACTURA FROM DUAL", [], { outFormat });
+      const facturaId = facturaIdResult.rows[0].ID_FACTURA;
+
+      // Insertar en PAGO
+      await connection.execute(
+        `INSERT INTO PAGO (ID_PAGO, ID_FACTURA, FECHA_PAGO, METODO_PAGO, MONTO)
+         VALUES (SEQ_PAGO.NEXTVAL, :id_factura, SYSDATE, :metodo_pago, :monto)`,
+        {
+          id_factura: facturaId,
+          metodo_pago,
+          monto: totalValue
         },
         { autoCommit: false }
       );
@@ -89,8 +127,15 @@ async function createReserva(req, res, next) {
 
     await connection.commit();
 
-    res.status(201).json({ message: "Reserva creada" });
+    res.status(201).json({ message: "Reserva creada exitosamente y pago registrado", id_reserva: reservaId });
   } catch (error) {
+    if (connection) {
+      try {
+        await connection.rollback();
+      } catch (err) {
+        // ignore
+      }
+    }
     next(error);
   } finally {
     if (connection) await connection.close();
@@ -115,6 +160,7 @@ async function updateReserva(req, res, next) {
 
     const nights = Number(cantidad_noches || 1);
     const subtotal = Number(precio_noche || 0) * nights;
+    const normalizedEstadoValue = normalizeEstado(estado);
 
     const result = await connection.execute(
       `UPDATE RESERVA
@@ -128,7 +174,7 @@ async function updateReserva(req, res, next) {
         id: Number(id),
         fecha_ingreso,
         fecha_salida,
-        estado: normalizeEstado(estado),
+        estado: normalizedEstadoValue,
         id_huesped,
         total: total || subtotal || null
       },
@@ -136,6 +182,7 @@ async function updateReserva(req, res, next) {
     );
 
     if (!result.rowsAffected) {
+      await connection.rollback();
       return res.status(404).json({ message: "Reserva no encontrada" });
     }
 
@@ -173,9 +220,27 @@ async function updateReserva(req, res, next) {
       }
     }
 
+    // Si se cancela la reserva, la factura pasa a ANULADO
+    if (normalizedEstadoValue === "CANCELADA") {
+      await connection.execute(
+        `UPDATE FACTURA
+         SET ESTADO_PAGO = 'ANULADO'
+         WHERE ID_RESERVA = :id_reserva`,
+        { id_reserva: Number(id) },
+        { autoCommit: false }
+      );
+    }
+
     await connection.commit();
     res.json({ message: "Reserva actualizada" });
   } catch (error) {
+    if (connection) {
+      try {
+        await connection.rollback();
+      } catch (err) {
+        // ignore
+      }
+    }
     next(error);
   } finally {
     if (connection) await connection.close();

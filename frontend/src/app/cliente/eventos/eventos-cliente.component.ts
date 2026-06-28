@@ -2,6 +2,7 @@ import { CommonModule, DatePipe, DecimalPipe } from "@angular/common";
 import { Component, OnInit, inject } from "@angular/core";
 
 import { ApiService } from "../../core/services/api.service";
+import { TrackingService } from "../../core/services/tracking.service";
 
 interface Evento {
   ID_EVENTO: number;
@@ -34,7 +35,7 @@ interface Evento {
       <section class="toolbar card">
         <label>
           Buscar
-          <input type="text" [value]="filtro" (input)="filtro = $any($event.target).value" placeholder="Nombre o descripcion" />
+          <input type="text" [value]="filtro" (input)="onFiltroChanged($any($event.target).value)" placeholder="Nombre o descripcion" />
         </label>
         <label class="check">
           <input type="checkbox" [checked]="soloActivos" (change)="soloActivos = $any($event.target).checked" />
@@ -166,6 +167,7 @@ interface Evento {
 })
 export class EventosClienteComponent implements OnInit {
   private readonly api = inject(ApiService);
+  private readonly trackingService = inject(TrackingService);
 
   eventos: Evento[] = [];
   cargando = false;
@@ -174,7 +176,15 @@ export class EventosClienteComponent implements OnInit {
   soloActivos = true;
 
   ngOnInit(): void {
+    this.trackingService.registrarVisita("Eventos", "Ingresó al módulo");
     this.cargarEventos();
+  }
+
+  onFiltroChanged(val: string): void {
+    this.filtro = val;
+    if (val.trim()) {
+      this.trackingService.registrarBusqueda(val.trim());
+    }
   }
 
   get total(): number {

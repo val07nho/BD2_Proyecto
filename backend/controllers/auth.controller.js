@@ -24,11 +24,13 @@ async function verifyPassword(rawPassword, storedPassword) {
 }
 
 function createToken(user) {
+  const nombreCompleto = [user.NOMBRES, user.APELLIDOS].filter(Boolean).join(" ") || user.USERNAME;
   return jwt.sign(
     {
       sub: user.ID_USUARIO,
       role: user.ROL_NOMBRE,
-      username: user.USERNAME
+      username: user.USERNAME,
+      nombre: nombreCompleto
     },
     JWT_SECRET,
     { expiresIn: JWT_EXPIRES_IN }
@@ -109,7 +111,8 @@ async function register(req, res, next) {
       {
         sub: userId,
         role: normalizedRole,
-        username: email
+        username: email,
+        nombre: names || email
       },
       JWT_SECRET,
       { expiresIn: JWT_EXPIRES_IN }

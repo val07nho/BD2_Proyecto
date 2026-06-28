@@ -3,7 +3,10 @@ import { Routes } from "@angular/router";
 import { LandingShellComponent } from "./landing-shell.component";
 import { HomeComponent } from "./home/home.component";
 import { HabitacionesComponent } from "./habitaciones/habitacion.components";
-import { SectionPageComponent } from "../shared/components/section-page.component";
+import { EventosLandingComponent } from "./eventos/eventos-landing.component";
+import { ServiciosLandingComponent } from "./servicios/servicios-landing.component";
+import { NosotrosLandingComponent } from "./nosotros/nosotros-landing.component";
+import { ContactoLandingComponent } from "./contacto/contacto-landing.component";
 
 export const landingRoutes: Routes = [
   {
@@ -16,27 +19,23 @@ export const landingRoutes: Routes = [
       },
       {
         path: "habitaciones",
-        component: HabitacionesComponent   // 👈 antes era SectionPageComponent
+        component: HabitacionesComponent
       },
       {
         path: "eventos",
-        component: SectionPageComponent,
-        data: { title: "Eventos", description: "Explora eventos y paquetes para tu estancia." }
+        component: EventosLandingComponent
       },
       {
         path: "servicios",
-        component: SectionPageComponent,
-        data: { title: "Servicios", description: "Conoce los servicios del hotel y beneficios adicionales." }
+        component: ServiciosLandingComponent
       },
       {
         path: "nosotros",
-        component: SectionPageComponent,
-        data: { title: "Nosotros", description: "Historia, vision y equipo del hotel." }
+        component: NosotrosLandingComponent
       },
       {
         path: "contacto",
-        component: SectionPageComponent,
-        data: { title: "Contacto", description: "Contactanos para reservas corporativas o soporte." }
+        component: ContactoLandingComponent
       }
     ]
   }

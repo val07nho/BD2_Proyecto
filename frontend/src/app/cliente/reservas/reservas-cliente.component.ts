@@ -165,9 +165,9 @@ interface Reserva {
                       <td>S/ {{ (r.TOTAL || r.SUBTOTAL || 0) | number: '1.2-2' }}</td>
                       <td>
                         <div class="row-actions">
-                          <button class="action" type="button" (click)="editarReserva(r)" [disabled]="normalizarEstado(r.ESTADO) === 'CANCELADA'">Editar</button>
-                          <button class="action warn" type="button" (click)="cancelarReserva(r)" [disabled]="normalizarEstado(r.ESTADO) === 'CANCELADA'">Cancelar</button>
-                          <button class="action danger" type="button" (click)="eliminarReserva(r)">Eliminar</button>
+                          <button class="action" type="button" (click)="editarReserva(r)" [disabled]="normalizarEstado(r.ESTADO) === 'CANCELADA' || normalizarEstado(r.ESTADO) === 'FINALIZADA'">Editar</button>
+                          <button class="action warn" type="button" (click)="cancelarReserva(r)" [disabled]="normalizarEstado(r.ESTADO) === 'CANCELADA' || normalizarEstado(r.ESTADO) === 'FINALIZADA'">Cancelar reserva</button>
+                          <button class="action success" type="button" (click)="finalizarReserva(r)" [disabled]="normalizarEstado(r.ESTADO) === 'CANCELADA' || normalizarEstado(r.ESTADO) === 'FINALIZADA'">Finalizar</button>
                         </div>
                       </td>
                     </tr>
@@ -289,6 +289,7 @@ interface Reserva {
         cursor: pointer;
       }
       .action.warn { color: #8A6A00; border-color: #E3C77E; }
+      .action.success { color: #1F5F23; border-color: rgba(46,125,50,.35); }
       .action.danger { color: #8A1E18; border-color: rgba(179,38,30,.35); }
       .empty { color: var(--muted); text-align: center; padding: .9rem; }
 
@@ -514,28 +515,36 @@ export class ReservasClienteComponent implements OnInit {
       }
     });
   }
+  finalizarReserva(r: Reserva): void {
+    if (!this.idHuespedActual) return;
 
-  eliminarReserva(r: Reserva): void {
-    const ok = confirm(`Se eliminara la reserva #${r.ID_RESERVA}. Esta accion no se puede deshacer. Continuar?`);
+    const ok = confirm(`¿Deseas marcar la reserva #${r.ID_RESERVA} como FINALIZADA para poder evaluarla?`);
     if (!ok) return;
+
+    const payload = {
+      fecha_ingreso: this.aFechaInput(r.FECHA_INGRESO),
+      fecha_salida: this.aFechaInput(r.FECHA_SALIDA),
+      estado: "FINALIZADA",
+      id_huesped: this.idHuespedActual,
+      id_habitacion: r.ID_HABITACION || null,
+      precio_noche: Number(r.PRECIO_NOCHE || 0),
+      cantidad_noches: Number(r.CANTIDAD_NOCHES || this.calcularNoches(r.FECHA_INGRESO, r.FECHA_SALIDA) || 1),
+      total: Number(r.TOTAL || r.SUBTOTAL || 0)
+    };
 
     this.error = "";
     this.mensaje = "";
 
-    this.api.delete(`/reservas/${r.ID_RESERVA}`).subscribe({
+    this.api.put(`/reservas/${r.ID_RESERVA}`, payload).subscribe({
       next: () => {
-        this.mensaje = "Reserva eliminada.";
-        if (this.reservaEditando?.ID_RESERVA === r.ID_RESERVA) {
-          this.cancelarEdicion();
-        }
+        this.mensaje = "Reserva finalizada correctamente. Ahora puedes evaluarla en la sección de Encuestas.";
         this.cargarReservas();
       },
       error: () => {
-        this.error = "No se pudo eliminar la reserva.";
+        this.error = "No se pudo finalizar la reserva.";
       }
     });
   }
-
   totalFormulario(precioNoche: number): number {
     return Number(precioNoche || 0) * this.obtenerNochesFormulario();
   }
