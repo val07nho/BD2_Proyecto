@@ -17,14 +17,16 @@ Proyecto de laboratorio para Base de Datos II (Oracle + MongoDB).
 | Reservas     | Oracle        |
 | Facturación  | Oracle        |
 | Eventos      | Oracle        |
-| Preferencias | MongoDB       |
-| Encuestas    | MongoDB       |
+| Perfil cliente | MongoDB     |
+| Encuestas      | MongoDB     |
+| Historial cliente | MongoDB  |
+| Recomendaciones | MongoDB    |
 
 ## Requisitos
 
 - Node.js 18+
 - Oracle Database (XE o similar) — opcional si no se usa
-- MongoDB 6+ corriendo en `localhost:27017`
+- MongoDB Atlas o MongoDB 6+
 
 ---
 
@@ -53,7 +55,7 @@ copy backend\.env.example backend\.env
 Edita `backend/.env`:
 ```
 PORT=4000
-MONGO_URI=mongodb://localhost:27017
+MONGO_URI=mongodb+srv://<db_user>:<db_password>@cluster0proyecto.e6bqz9m.mongodb.net/
 MONGO_DB=hrms
 
 # Solo si tienes Oracle:
@@ -124,3 +126,5 @@ La aplicacion Angular ya esta preparada para consumirlos en cuanto los agregues.
 
 - El backend **arranca aunque Oracle no esté disponible**. Si Oracle falla, verás un `⚠️` en la consola pero MongoDB y las rutas de preferencias/encuestas seguirán funcionando.
 - El frontend se sirve a través de Express desde `frontend/server.js` en el puerto 3000.
+- Las 4 colecciones MongoDB usadas por la API son: `perfil_cliente`, `encuestas`, `historial_cliente` y `recomendaciones`.
+- Rutas MongoDB disponibles: `/api/perfiles-cliente` (alias `/api/preferencias`), `/api/encuestas`, `/api/historial-cliente`, `/api/recomendaciones`.

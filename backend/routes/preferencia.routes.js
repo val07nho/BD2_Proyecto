@@ -4,6 +4,7 @@ const controller = require("../controllers/preferencia.controller");
 const router = Router();
 
 router.get("/", controller.listPreferencias);
+router.get("/huesped/:idHuesped", controller.getPreferenciaByHuesped);
 router.post("/", controller.createPreferencia);
 router.put("/:idHuesped", controller.updatePreferencia);
 router.delete("/:idHuesped", controller.deletePreferencia);

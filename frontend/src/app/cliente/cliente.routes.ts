@@ -6,6 +6,9 @@ import { SectionPageComponent } from "../shared/components/section-page.componen
 import { HabitacionesClienteComponent } from "./habitaciones/habitaciones-cliente.component";
 import { EventosClienteComponent } from "./eventos/eventos-cliente.component";
 import { ReservasClienteComponent } from "./reservas/reservas-cliente.component";
+import { PerfilClienteComponent } from "./perfil/perfil-cliente.component";
+import { FacturasClienteComponent } from "./facturas/facturas-cliente.component";
+import { EncuestasClienteComponent } from "./encuestas/encuestas-cliente.component";
 
 export const clienteRoutes: Routes = [
   {
@@ -16,10 +19,10 @@ export const clienteRoutes: Routes = [
       { path: "habitaciones", component: HabitacionesClienteComponent },
       { path: "reservas", component: ReservasClienteComponent },
       { path: "eventos", component: EventosClienteComponent },
-      { path: "facturas", component: SectionPageComponent, data: { title: "Facturas", description: "Consulta tus facturas y estado de pago." } },
-      { path: "perfil", component: SectionPageComponent, data: { title: "Perfil", description: "Edita tus datos personales y de contacto." } },
+      { path: "facturas", component: FacturasClienteComponent },
+      { path: "perfil", component: PerfilClienteComponent },
       { path: "preferencias", component: SectionPageComponent, data: { title: "Preferencias", description: "Configura preferencias de hospedaje y servicios." } },
-      { path: "encuestas", component: SectionPageComponent, data: { title: "Encuestas", description: "Responde encuestas de satisfaccion del hotel." } }
+      { path: "encuestas", component: EncuestasClienteComponent }
     ]
   }
 ];

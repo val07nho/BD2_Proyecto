@@ -17,6 +17,8 @@ const rolRoutes = require("./routes/rol.routes");
 const usuarioRoutes = require("./routes/usuario.routes");
 const preferenciaRoutes = require("./routes/preferencia.routes");
 const encuestaRoutes = require("./routes/encuesta.routes");
+const historialRoutes = require("./routes/historial.routes");
+const recomendacionRoutes = require("./routes/recomendacion.routes");
 const authRoutes = require("./routes/auth.routes");
 
 const app = express();
@@ -41,7 +43,10 @@ app.use("/api/pagos", pagoRoutes);
 app.use("/api/eventos", eventoRoutes);
 app.use("/api/servicios", servicioRoutes);
 app.use("/api/preferencias", preferenciaRoutes);
+app.use("/api/perfiles-cliente", preferenciaRoutes);
 app.use("/api/encuestas", encuestaRoutes);
+app.use("/api/historial-cliente", historialRoutes);
+app.use("/api/recomendaciones", recomendacionRoutes);
 
 app.use((err, req, res, next) => {
   console.error(err);
