@@ -5,6 +5,7 @@ const { requireAuth, requireRole } = require("../middleware/auth.middleware");
 const router = Router();
 
 router.get("/", controller.listEventos);
+router.get("/mis-reservas", requireAuth, controller.getMisEventos);
 router.post("/adquirir", requireAuth, controller.adquirirEvento);
 router.post("/", requireAuth, requireRole("ADMIN"), controller.createEvento);
 router.put("/:id", requireAuth, requireRole("ADMIN"), controller.updateEvento);

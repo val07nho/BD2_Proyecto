@@ -38,6 +38,9 @@ function passwordMatchValidator(control: AbstractControl): ValidationErrors | nu
             type="text"
             formControlName="nombre"
             placeholder="Juan Pérez">
+          @if(form.get('nombre')?.invalid && form.get('nombre')?.touched){
+            <span class="field-error">El nombre completo es requerido.</span>
+          }
         </label>
 
         <label>
@@ -46,6 +49,12 @@ function passwordMatchValidator(control: AbstractControl): ValidationErrors | nu
             type="email"
             formControlName="email"
             placeholder="correo@ejemplo.com">
+          @if(form.get('email')?.invalid && form.get('email')?.touched){
+            <span class="field-error">
+              @if(form.get('email')?.errors?.['required']){El correo es requerido.}
+              @else{Ingresa un correo electrónico válido.}
+            </span>
+          }
         </label>
 
         <label>
@@ -54,6 +63,12 @@ function passwordMatchValidator(control: AbstractControl): ValidationErrors | nu
             [type]="hidePassword ? 'password' : 'text'"
             formControlName="password"
             placeholder="Mínimo 6 caracteres">
+          @if(form.get('password')?.invalid && form.get('password')?.touched){
+            <span class="field-error">
+              @if(form.get('password')?.errors?.['required']){La contraseña es requerida.}
+              @else{La contraseña debe tener mínimo 6 caracteres.}
+            </span>
+          }
         </label>
 
         <label>
@@ -62,6 +77,9 @@ function passwordMatchValidator(control: AbstractControl): ValidationErrors | nu
             [type]="hidePassword ? 'password' : 'text'"
             formControlName="confirmPassword"
             placeholder="Repite tu contraseña">
+          @if(form.get('confirmPassword')?.invalid && form.get('confirmPassword')?.touched){
+            <span class="field-error">La confirmación de contraseña es requerida.</span>
+          }
         </label>
 
         <button
@@ -88,7 +106,7 @@ function passwordMatchValidator(control: AbstractControl): ValidationErrors | nu
         <button
           class="btn-gold"
           type="submit"
-          [disabled]="form.invalid || loading">
+          [disabled]="loading">
 
           {{loading ? 'Creando cuenta...' : 'Crear cuenta'}}
 
@@ -188,6 +206,13 @@ function passwordMatchValidator(control: AbstractControl): ValidationErrors | nu
       margin:0;
     }
 
+    .field-error{
+      color:#b91c1c;
+      font-size:.78rem;
+      font-weight:400;
+      margin-top:.2rem;
+    }
+
     .switch-msg{
       margin-top:1.5rem;
       text-align:center;
@@ -221,7 +246,10 @@ export class RegisterComponent {
 
   onSubmit() {
 
-    if (this.form.invalid) return;
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
 
     this.loading = true;
     this.error = "";

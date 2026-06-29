@@ -21,6 +21,18 @@ interface ReservaMini {
   ESTADO: string;
   FECHA_INGRESO: string;
   FECHA_SALIDA: string;
+  NUMERO_HABITACION?: string;
+}
+
+interface InscripcionEvento {
+  ID_RESERVA_EVENTO: number;
+  ID_RESERVA: number;
+  CANTIDAD: number;
+  SUBTOTAL: number;
+  EVENTO_NOMBRE: string;
+  FECHA_EVENTO: string;
+  NUMERO_HABITACION?: string;
+  RESERVA_ESTADO?: string;
 }
 
 @Component({
@@ -32,64 +44,227 @@ interface ReservaMini {
       <section class="hero">
         <div class="hero-content">
           <span class="eyebrow">Experiencias</span>
-          <h1>Eventos en Aurea</h1>
-          <p>Explora actividades, talleres y eventos especiales directamente desde la informacion registrada en la base de datos.</p>
+          <h1>Actividades & Eventos en Aurea</h1>
+          <p>Enriquece tu estadía participando en las experiencias exclusivas diseñadas por nuestro hotel.</p>
         </div>
       </section>
 
       @if (error) {
         <div class="alert error">{{ error }}</div>
       }
+      @if (mensajeExito) {
+        <div class="alert success">{{ mensajeExito }}</div>
+      }
 
-      <section class="toolbar card">
-        <label>
-          Buscar
-          <input type="text" [value]="filtro" (input)="onFiltroChanged($any($event.target).value)" placeholder="Nombre o descripcion" />
-        </label>
-        <label class="check">
-          <input type="checkbox" [checked]="soloActivos" (change)="soloActivos = $any($event.target).checked" />
-          Mostrar solo activos
-        </label>
-      </section>
+      <!-- 1. MIS INSCRIPCIONES (PRIMERO - ARRIBA) -->
+      <section class="card agenda-card">
+        <div class="card-head">
+          <div>
+            <h3>Mi Agenda de Experiencias</h3>
+            <p class="subtitle">Eventos reservados vinculados a tu estancia en el hotel.</p>
+          </div>
+          <button class="btn ghost" type="button" (click)="cargarMisInscripciones()" [disabled]="cargandoInscripciones">
+            Actualizar Agenda
+          </button>
+        </div>
 
-      <section class="stats">
-        <article class="card stat"><strong>{{ total }}</strong><small>Total eventos</small></article>
-        <article class="card stat"><strong>{{ activos }}</strong><small>Activos</small></article>
-        <article class="card stat"><strong>{{ proximos }}</strong><small>Proximos</small></article>
-      </section>
-
-      <section class="eventos-grid">
-        @if (cargando) {
-          <p class="estado-msg">Cargando eventos...</p>
-        } @else if (eventosFiltrados.length === 0) {
-          <p class="estado-msg">No hay eventos para los filtros actuales.</p>
+        @if (cargandoInscripciones) {
+          <p class="empty-msg">Cargando agenda de eventos...</p>
+        } @else if (misInscripciones.length === 0) {
+          <p class="empty-msg">Aún no te has inscrito a ningún evento para tus próximas vacaciones.</p>
         } @else {
-          @for (e of eventosFiltrados; track e.ID_EVENTO) {
-            <article class="evento-card">
-              <div class="cover" [style.background-image]="'url(' + imagenPara(e.ID_EVENTO) + ')'">
-                <span class="badge" [class.inactivo]="e.ESTADO !== 'A'">{{ e.ESTADO === 'A' ? 'Activo' : 'Inactivo' }}</span>
-              </div>
-
-              <div class="body">
-                <h3>{{ e.NOMBRE }}</h3>
-                <p>{{ e.DESCRIPCION || 'Evento especial para huespedes del hotel.' }}</p>
-
-                <ul>
-                  <li><strong>Fecha:</strong> {{ e.FECHA_EVENTO | date: 'yyyy-MM-dd' }}</li>
-                  <li><strong>Costo:</strong> S/ {{ e.COSTO | number: '1.2-2' }}</li>
-                  <li><strong>Cupos:</strong> {{ e.CUPOS ?? 'No definido' }}</li>
-                </ul>
-              </div>
-            </article>
-          }
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Código de Reserva</th>
+                  <th>Habitación</th>
+                  <th>Actividad</th>
+                  <th>Fecha de Evento</th>
+                  <th>Entradas Reservadas</th>
+                  <th>Total Facturado</th>
+                  <th>Estado de Pago</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of misInscripciones; track item.ID_RESERVA_EVENTO) {
+                  <tr>
+                    <td class="res-code">{{ formatearCodigoReserva(item.ID_RESERVA) }}</td>
+                    <td><strong>{{ item.NUMERO_HABITACION ? 'Hab. N° ' + item.NUMERO_HABITACION : '-' }}</strong></td>
+                    <td class="event-name">{{ item.EVENTO_NOMBRE }}</td>
+                    <td>{{ item.FECHA_EVENTO | date: 'dd MMM, yyyy' }}</td>
+                    <td class="qty">{{ item.CANTIDAD }} cupos</td>
+                    <td class="amount">S/ {{ item.SUBTOTAL | number: '1.2-2' }}</td>
+                    <td>
+                      @if (item.RESERVA_ESTADO === 'PENDIENTE') {
+                        <span class="badge-status pendiente">Por Pagar (En Factura)</span>
+                      } @else if (item.RESERVA_ESTADO === 'CONFIRMADA') {
+                        <span class="badge-status pagado">Pagado (Estadía Confirmada)</span>
+                      } @else {
+                        <span class="badge-status finalizado">{{ item.RESERVA_ESTADO }}</span>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
         }
       </section>
+
+      <!-- 2. CARTELERA DE EVENTOS DISPONIBLES (ABAJO) -->
+      <section class="card list-card">
+        <div class="list-head">
+          <div>
+            <h3>Cartelera de Experiencias Disponibles</h3>
+            <p class="subtitle">Explora los eventos activos del Resort e inscríbete para asegurar tu plaza.</p>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <label class="search-label">
+            Buscar Actividad
+            <input type="text" [value]="filtro" (input)="onFiltroChanged($any($event.target).value)" placeholder="Filtrar por nombre o descripción..." />
+          </label>
+          <div class="stats-pills">
+            <span class="pill"><strong>{{ total }}</strong> Eventos Totales</span>
+            <span class="pill"><strong>{{ proximos }}</strong> Próximos</span>
+          </div>
+        </div>
+
+        @if (cargando) {
+          <p class="empty-msg">Cargando cartelera...</p>
+        } @else if (eventosFiltrados.length === 0) {
+          <p class="empty-msg">No hay actividades disponibles para los criterios de búsqueda actuales.</p>
+        } @else {
+          <div class="eventos-grid">
+            @for (e of eventosFiltrados; track e.ID_EVENTO) {
+              <article class="evento-card" (click)="verDetalleEvento(e)">
+                <div class="cover" [style.background-image]="'url(' + imagenPara(e.ID_EVENTO) + ')'">
+                  <span class="price-badge">S/ {{ e.COSTO | number: '1.2-2' }}</span>
+                </div>
+
+                <div class="body">
+                  <h3>{{ e.NOMBRE }}</h3>
+                  <p class="desc">{{ e.DESCRIPCION || 'Disfruta de una experiencia única planificada por nuestro personal especializado.' }}</p>
+
+                  <div class="meta">
+                    <span class="date">📅 {{ e.FECHA_EVENTO | date: 'dd MMM, yyyy' }}</span>
+                    <span class="spots" [class.no-spots]="e.CUPOS !== null && e.CUPOS !== undefined && e.CUPOS <= 0">
+                      🎟️ {{ e.CUPOS !== null && e.CUPOS !== undefined && e.CUPOS > 0 ? e.CUPOS + ' cupos disp.' : 'Cupos agotados' }}
+                    </span>
+                  </div>
+
+                  <button class="action-btn" type="button" [disabled]="e.CUPOS !== null && e.CUPOS !== undefined && e.CUPOS <= 0">
+                    {{ e.CUPOS !== null && e.CUPOS !== undefined && e.CUPOS <= 0 ? 'Agotado' : 'Inscribirse' }}
+                  </button>
+                </div>
+              </article>
+            }
+          </div>
+        }
+      </section>
+
+      <!-- Modal de Adquisición de Entrada Corporativo -->
+      @if (mostrarModal && eventoSeleccionado) {
+        <div class="modal-overlay" (click)="cerrarModal()">
+          <div class="modal-card" (click)="$event.stopPropagation()">
+            <header class="modal-header">
+              <div>
+                <span class="eyebrow">Reserva de Actividad</span>
+                <h2>{{ eventoSeleccionado.NOMBRE }}</h2>
+                <p class="section-desc">Fecha del Evento: {{ eventoSeleccionado.FECHA_EVENTO | date: 'dd MMMM, yyyy' }}</p>
+              </div>
+              <button class="close-btn" type="button" (click)="cerrarModal()">&times;</button>
+            </header>
+
+            <div class="modal-body">
+              <p class="modal-desc">{{ eventoSeleccionado.DESCRIPCION || 'Únete a este evento exclusivo de Aurea Resort. El cargo se verá reflejado en la facturación consolidada de tu alojamiento.' }}</p>
+              
+              <div class="adquisicion-section">
+                @if (reservasActivas.length === 0) {
+                  <div class="warning-box">
+                    <span class="warning-icon">⚠️</span>
+                    <p class="warning-text">No tienes ninguna reserva de habitación activa o confirmada. Para poder inscribirte en un evento, debes contar con una estancia registrada en el hotel.</p>
+                  </div>
+                } @else {
+                  <form class="adquisicion-form">
+                    <label>
+                      Selecciona tu Estadía
+                      <select [(ngModel)]="idReservaSeleccionada" name="reserva">
+                        <option [ngValue]="null">Elige una estancia activa...</option>
+                        @for (r of reservasActivas; track r.ID_RESERVA) {
+                          <option [ngValue]="r.ID_RESERVA">
+                            {{ formatearCodigoReserva(r.ID_RESERVA) }} - Habitación N° {{ r.NUMERO_HABITACION || '-' }} ({{ r.FECHA_INGRESO | date: 'dd/MM' }} al {{ r.FECHA_SALIDA | date: 'dd/MM' }})
+                          </option>
+                        }
+                      </select>
+                    </label>
+
+                    <div class="form-row">
+                      <label>
+                        Cantidad de Cupos
+                        <input type="number" min="1" [max]="eventoSeleccionado.CUPOS || 10" [(ngModel)]="cantidadAdquirir" name="cantidad" />
+                      </label>
+                      
+                      <div class="unit-price">
+                        <small>Costo por cupo</small>
+                        <strong>S/ {{ eventoSeleccionado.COSTO | number: '1.2-2' }}</strong>
+                      </div>
+                    </div>
+                  </form>
+
+                  @if (idReservaSeleccionada) {
+                    <div class="summary-card">
+                      <h4>Detalle de Factura Comercial</h4>
+                      <div class="summary-row">
+                        <span>Costo Unitario:</span>
+                        <span>S/ {{ eventoSeleccionado.COSTO | number: '1.2-2' }}</span>
+                      </div>
+                      <div class="summary-row">
+                        <span>Cupos solicitados:</span>
+                        <span>{{ cantidadAdquirir }} entradas</span>
+                      </div>
+                      <div class="divider"></div>
+                      <div class="summary-row">
+                        <span>Subtotal:</span>
+                        <span>S/ {{ (eventoSeleccionado.COSTO * cantidadAdquirir / 1.18) | number: '1.2-2' }}</span>
+                      </div>
+                      <div class="summary-row">
+                        <span>IGV (18%):</span>
+                        <span>S/ {{ (eventoSeleccionado.COSTO * cantidadAdquirir - (eventoSeleccionado.COSTO * cantidadAdquirir / 1.18)) | number: '1.2-2' }}</span>
+                      </div>
+                      <div class="divider"></div>
+                      <div class="summary-row total">
+                        <span>Monto total a cargar:</span>
+                        <strong class="total-monto">S/ {{ (eventoSeleccionado.COSTO * cantidadAdquirir) | number: '1.2-2' }}</strong>
+                      </div>
+                    </div>
+                  }
+                }
+              </div>
+
+              @if (errorAdquisicion) {
+                <div class="alert error" style="margin-top: 0.8rem;">{{ errorAdquisicion }}</div>
+              }
+            </div>
+
+            <footer class="modal-footer">
+              <button type="button" class="btn ghost" (click)="cerrarModal()" [disabled]="adquiriendo">Cancelar</button>
+              <button type="button" class="btn primary" [disabled]="!idReservaSeleccionada || adquiriendo" (click)="adquirir()">
+                {{ adquiriendo ? 'Cargando Cuenta...' : 'Confirmar Inscripción' }}
+              </button>
+            </footer>
+          </div>
+        </div>
+      }
     </section>
   `,
   styles: [
     `
       :host {
         --navy-900: #0B2540;
+        --navy-700: #16395E;
         --gold-500: #C9A227;
         --gold-300: #E3C77E;
         --cream-50: #FBF8F2;
@@ -101,178 +276,483 @@ interface ReservaMini {
         font-family: 'Inter', system-ui, sans-serif;
       }
       * { box-sizing: border-box; }
-      .cliente-eventos { display: grid; gap: 1rem; }
+      .cliente-eventos { display: grid; gap: 1.2rem; }
+      
       .hero {
-        border-radius: 22px;
-        min-height: 220px;
-        background-image: linear-gradient(180deg, rgba(11,37,64,.56), rgba(11,37,64,.78)), url('https://picsum.photos/seed/eventos-hero/1500/620');
-        background-size: cover;
-        background-position: center;
-        display: grid;
-        align-items: end;
+        border-radius: 24px;
+        min-height: 180px;
+        background: linear-gradient(120deg, #F3E9D6, var(--cream-50));
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow);
+        display: flex;
+        align-items: center;
+        padding: 1.5rem 1.8rem;
       }
-      .hero-content { padding: 1.4rem; color: var(--white); max-width: 760px; }
-      .eyebrow { color: var(--gold-300); text-transform: uppercase; letter-spacing: .14em; font-size: .73rem; font-weight: 900; }
-      .hero h1 { margin: .35rem 0 .4rem; font-family: 'Playfair Display', serif; font-size: 2rem; }
-      .hero p { margin: 0; color: rgba(255,255,255,.92); }
-      .alert.error { border-radius: 12px; padding: .75rem .9rem; font-weight: 600; background: rgba(179,38,30,.1); color: #8A1E18; border: 1px solid rgba(179,38,30,.2); }
-      .card { border-radius: 14px; border: 1px solid var(--border); background: var(--white); box-shadow: var(--shadow); }
-      .toolbar { display: flex; gap: .9rem; align-items: end; flex-wrap: wrap; padding: .95rem 1rem; }
-      .toolbar label { display: grid; gap: .35rem; font-size: .78rem; color: var(--navy-900); font-weight: 700; }
-      .toolbar input[type='text'] {
-        min-width: 260px;
+      .hero-content { max-width: 680px; }
+      .eyebrow { color: var(--gold-500); text-transform: uppercase; letter-spacing: .14em; font-size: .74rem; font-weight: 900; }
+      .hero h1 { margin: .3rem 0 .45rem; color: var(--navy-900); font-family: 'Playfair Display', serif; font-size: 2rem; }
+      .hero p { margin: 0; color: var(--muted); font-size: 0.9rem; line-height: 1.5; }
+
+      .alert { border-radius: 12px; padding: .75rem 1rem; font-weight: 600; font-size: .86rem; }
+      .alert.success { background: rgba(201,162,39,.1); color: #8A6A00; border: 1px solid rgba(201,162,39,.2); }
+      .alert.error { background: rgba(179,38,30,.1); color: #8A1E18; border: 1px solid rgba(179,38,30,.25); }
+
+      .card {
+        border-radius: 20px;
+        background: var(--white);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow);
+        padding: 1.5rem 1.6rem;
+      }
+      
+      .card-head, .list-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1.2rem;
+        flex-wrap: wrap;
+      }
+      h3 { margin: 0; color: var(--navy-900); font-family: 'Playfair Display', serif; font-size: 1.35rem; }
+      .subtitle { margin: 0.2rem 0 0; color: var(--muted); font-size: 0.8rem; }
+
+      /* Tabla de Inscripciones */
+      .table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); }
+      table { width: 100%; border-collapse: collapse; text-align: left; font-size: .86rem; min-width: 900px; }
+      th, td { padding: 0.95rem 1rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+      th { background: #FAF9F6; color: var(--navy-700); font-weight: 800; font-size: .76rem; text-transform: uppercase; letter-spacing: 0.05em; }
+      td { color: var(--navy-900); }
+      .res-code { font-family: 'Courier New', monospace; font-weight: 700; color: var(--navy-700); }
+      .event-name { font-weight: 700; color: var(--navy-900); }
+      .qty { font-weight: 600; color: var(--muted); }
+      .amount { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 0.95rem; color: var(--navy-900); }
+      .empty-msg { text-align: center; color: var(--muted); font-style: italic; padding: 2rem 0; margin: 0; font-size: 0.9rem; }
+      .badge-status {
+        display: inline-block;
+        padding: 0.25rem 0.6rem;
+        border-radius: 6px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+      .badge-status.pendiente { background: rgba(201,162,39,0.1); color: #8A6A00; border: 1px solid rgba(201,162,39,0.25); }
+      .badge-status.pagado { background: rgba(11,37,64,0.06); color: var(--navy-900); border: 1px solid rgba(11,37,64,0.12); }
+      .badge-status.finalizado { background: rgba(0,0,0,0.05); color: var(--muted); border: 1px solid var(--border); }
+
+      /* Cartelera de Eventos */
+      .toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+      }
+      .search-label { display: grid; gap: 0.4rem; font-size: 0.78rem; font-weight: 700; color: var(--navy-700); }
+      .toolbar input {
+        min-width: 320px;
         border: 1px solid var(--border);
         border-radius: 8px;
-        padding: .55rem .65rem;
+        padding: 0.58rem 0.7rem;
         font: inherit;
         background: var(--cream-50);
+        color: var(--navy-900);
       }
-      .check { display: inline-flex; align-items: center; gap: .45rem; }
-      .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .8rem; }
-      .stat { padding: .9rem 1rem; }
-      .stat strong { display: block; color: var(--navy-900); font-family: 'Playfair Display', serif; font-size: 1.45rem; line-height: 1; }
-      .stat small { color: var(--muted); font-size: .78rem; }
-      .eventos-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+      .stats-pills { display: flex; gap: 0.5rem; }
+      .pill {
+        background: var(--cream-50);
+        border: 1px solid var(--border);
+        padding: 0.35rem 0.7rem;
+        border-radius: 20px;
+        font-size: 0.78rem;
+        color: var(--navy-900);
+      }
+      .pill strong { color: var(--gold-500); }
+
+      /* Grid de Cartas */
+      .eventos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.2rem; }
       .evento-card {
         border-radius: 16px;
         overflow: hidden;
         border: 1px solid var(--border);
         background: var(--white);
-        box-shadow: 0 12px 28px rgba(11,37,64,.08);
+        box-shadow: 0 12px 28px rgba(11,37,64,.04);
         cursor: pointer;
-        transition: transform 0.2s, box-shadow 0.2s;
+        transition: transform 0.25s, box-shadow 0.25s;
         display: flex;
         flex-direction: column;
       }
       .evento-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 18px 36px rgba(11,37,64,.12);
+        transform: translateY(-4px);
+        box-shadow: 0 20px 40px rgba(11,37,64,.1);
       }
-      .cover {
-        height: 160px;
+      .evento-card .cover {
+        height: 150px;
         background-size: cover;
         background-position: center;
         position: relative;
       }
-      .badge {
+      .price-badge {
         position: absolute;
-        top: .65rem;
-        right: .65rem;
-        border-radius: 999px;
-        background: #1f6b3d;
+        bottom: 0.8rem;
+        left: 0.8rem;
+        background: var(--navy-900);
         color: var(--white);
-        padding: .24rem .55rem;
-        font-size: .7rem;
+        padding: 0.3rem 0.6rem;
+        border-radius: 8px;
+        font-family: 'Playfair Display', serif;
         font-weight: 700;
+        font-size: 0.84rem;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.15);
       }
-      .badge.inactivo { background: #8A1E18; }
-      .body { padding: .92rem .95rem; display: flex; flex-direction: column; flex-grow: 1; gap: .5rem; }
-      .body h3 { margin: 0; color: var(--navy-900); font-size: 1.05rem; font-family: 'Playfair Display', serif; }
-      .body p { margin: 0; color: var(--muted); font-size: .84rem; line-height: 1.4; flex-grow: 1; }
-      .body ul { margin: 0; padding: 0; list-style: none; display: grid; gap: .22rem; color: var(--navy-900); font-size: .82rem; }
-      .estado-msg { text-align: center; color: var(--muted); padding: 1rem; }
+      .evento-card .body { padding: 1rem; display: flex; flex-direction: column; flex-grow: 1; gap: 0.6rem; }
+      .evento-card h3 { margin: 0; color: var(--navy-900); font-family: 'Playfair Display', serif; font-size: 1.1rem; }
+      .evento-card .desc { margin: 0; color: var(--muted); font-size: 0.8rem; line-height: 1.4; flex-grow: 1; }
+      .evento-card .meta {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.74rem;
+        font-weight: 600;
+        border-top: 1px solid var(--border);
+        padding-top: 0.6rem;
+        color: var(--navy-700);
+      }
+      .spots.no-spots { color: #8A1E18; }
+      
+      .action-btn {
+        width: 100%;
+        border: 1px solid var(--gold-300);
+        border-radius: 8px;
+        background: rgba(201,162,39,0.03);
+        color: var(--gold-500);
+        padding: 0.5rem;
+        font-size: 0.8rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: 0.2s;
+        margin-top: 0.2rem;
+      }
+      .action-btn:hover { background: var(--gold-500); color: var(--navy-900); }
+      .action-btn:disabled { background: var(--cream-50) !important; border-color: var(--border) !important; color: var(--muted) !important; cursor: not-allowed; }
 
-      /* Modal y Adquisición */
+      /* Modales Premium */
       .modal-overlay {
         position: fixed;
         top: 0; left: 0; right: 0; bottom: 0;
-        background: rgba(11,37,64,0.5);
+        background: rgba(11, 37, 64, 0.45);
+        backdrop-filter: blur(5px);
         display: flex;
-        justify-content: center;
         align-items: center;
+        justify-content: center;
         z-index: 1000;
-        backdrop-filter: blur(4px);
+        padding: 1rem;
       }
-      .modal-card { width: 100%; max-width: 500px; overflow: hidden; }
-      .modal-cover {
-        height: 200px;
-        background-size: cover;
-        background-position: center;
+      .modal-card {
+        background: var(--white);
+        border-radius: 24px;
+        border: 1px solid var(--border);
+        box-shadow: 0 30px 70px rgba(11,37,64,0.18);
+        width: 100%;
+        max-width: 480px;
+        padding: 1.8rem;
+        animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         position: relative;
       }
-      .close-btn {
-        position: absolute;
-        top: 0.75rem;
-        right: 0.75rem;
-        background: rgba(255,255,255,0.8);
-        border: none;
-        border-radius: 50%;
-        width: 32px;
-        height: 32px;
-        font-size: 1.5rem;
-        cursor: pointer;
+      @keyframes slideUp {
+        from { transform: translateY(30px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+      }
+      .modal-header {
         display: flex;
-        align-items: center;
-        justify-content: center;
-        color: var(--navy-900);
+        justify-content: space-between;
+        align-items: flex-start;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 0.8rem;
+        margin-bottom: 1rem;
       }
-      .modal-body { padding: 1.5rem; display: grid; gap: 0.75rem; }
-      .modal-eyebrow { color: var(--gold-500); text-transform: uppercase; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; }
-      .modal-body h2 { margin: 0; color: var(--navy-900); font-family: 'Playfair Display', serif; }
-      .modal-price { font-size: 1.15rem; font-weight: 800; color: var(--gold-500); }
-      .modal-desc { margin: 0; color: var(--muted); font-size: 0.88rem; line-height: 1.5; }
-      .btn {
-        padding: 0.58rem 1.25rem;
-        font-weight: 700;
-        border-radius: 8px;
-        font-size: 0.84rem;
-        cursor: pointer;
-        border: none;
-      }
-      .btn.primary { background: var(--navy-900); color: var(--white); }
-      .btn.success-btn { background: #1f6b3d; color: var(--white); }
-      .btn.success-btn:hover { background: #17522f; }
-      .btn:disabled { opacity: 0.7; cursor: not-allowed; }
-
-      .alert { border-radius: 12px; padding: .72rem .92rem; font-weight: 600; font-size: .86rem; }
-      .alert.success { background: rgba(46,125,50,.12); color: #1F5F23; border: 1px solid rgba(46,125,50,.24); }
-      .alert.error { background: rgba(179,38,30,.1); color: #8A1E18; border: 1px solid rgba(179,38,30,.25); }
-
-      .adquisicion-section {
-        border-top: 1px dashed var(--border);
-        margin-top: 1rem;
-        padding-top: 1rem;
-      }
-      .adquisicion-section h3 {
-        margin: 0 0 0.75rem 0;
+      .modal-header h2 {
+        margin: 0.2rem 0;
         font-family: 'Playfair Display', serif;
-        font-size: 1.1rem;
         color: var(--navy-900);
+        font-size: 1.4rem;
       }
-      .warning-text {
-        color: #8A6A00;
-        font-size: 0.85rem;
-        font-weight: 600;
+      .modal-header .section-desc { margin: 0; color: var(--muted); font-size: 0.8rem; }
+      .close-btn { background: none; border: none; font-size: 1.6rem; color: var(--muted); cursor: pointer; line-height: 1; }
+      .modal-desc { margin: 0 0 1rem; color: var(--muted); font-size: 0.84rem; line-height: 1.5; }
+
+      .adquisicion-section { display: grid; gap: 0.8rem; }
+      .warning-box {
+        display: flex;
+        gap: 0.6rem;
+        background: rgba(179,38,30,.06);
+        border: 1px solid rgba(179,38,30,.15);
+        padding: 0.8rem;
+        border-radius: 12px;
       }
-      .adquisicion-form {
-        display: grid;
-        gap: 0.75rem;
-        margin-bottom: 0.5rem;
-      }
-      .adquisicion-form label {
-        display: grid;
-        gap: 0.35rem;
-        font-size: 0.78rem;
-        font-weight: 700;
-        color: var(--navy-700);
-      }
+      .warning-icon { font-size: 1.1rem; }
+      .warning-text { margin: 0; color: #8A1E18; font-size: 0.78rem; font-weight: 500; line-height: 1.4; }
+
+      .adquisicion-form { display: grid; gap: 0.8rem; }
+      .adquisicion-form label { display: grid; gap: 0.35rem; font-size: 0.78rem; font-weight: 700; color: var(--navy-700); }
       .adquisicion-form select, .adquisicion-form input {
         border: 1px solid var(--border);
         border-radius: 8px;
-        padding: 0.55rem;
+        padding: 0.58rem;
         font: inherit;
         background: var(--cream-50);
         color: var(--navy-900);
       }
+      .form-row { display: grid; grid-template-columns: 1.2fr 1fr; gap: 0.8rem; align-items: end; }
+      .unit-price {
+        display: grid;
+        justify-content: end;
+        text-align: right;
+        padding-bottom: 0.2rem;
+      }
+      .unit-price small { color: var(--muted); font-size: 0.74rem; }
+      .unit-price strong { color: var(--gold-500); font-size: 1.15rem; font-family: 'Playfair Display', serif; }
 
-      @media (max-width: 1100px) {
-        .stats { grid-template-columns: 1fr; }
-        .eventos-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      /* Resumen de Factura */
+      .summary-card {
+        background: var(--cream-50);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 1rem;
       }
-      @media (max-width: 700px) {
-        .eventos-grid { grid-template-columns: 1fr; }
-        .hero h1 { font-size: 1.6rem; }
+      .summary-card h4 {
+        margin: 0 0 0.6rem;
+        color: var(--navy-900);
+        font-family: 'Playfair Display', serif;
+        font-size: 0.9rem;
+        border-bottom: 1px solid rgba(11,37,64,0.06);
+        padding-bottom: 0.3rem;
       }
+      .summary-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem; font-size: 0.8rem; }
+      .summary-row span { color: var(--muted); }
+      .divider { height: 1px; background: var(--border); margin: 0.6rem 0; }
+      .summary-row.total { margin-bottom: 0; }
+      .total-monto { font-size: 1.2rem; color: var(--gold-500); font-family: 'Playfair Display', serif; }
+
+      .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        padding-top: 1.2rem;
+        border-top: 1px solid var(--border);
+        margin-top: 0.8rem;
+      }
+
+      /* Botones Generales */
+      .btn {
+        border: none;
+        border-radius: 9px;
+        padding: .55rem .95rem;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+        transition: .15s ease-in-out;
+        font-size: .8rem;
+      }
+      .stats-pills { display: flex; gap: 0.5rem; }
+      .pill {
+        background: var(--cream-50);
+        border: 1px solid var(--border);
+        padding: 0.35rem 0.7rem;
+        border-radius: 20px;
+        font-size: 0.78rem;
+        color: var(--navy-900);
+      }
+      .pill strong { color: var(--gold-500); }
+
+      /* Grid de Cartas */
+      .eventos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.2rem; }
+      .evento-card {
+        border-radius: 16px;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        background: var(--white);
+        box-shadow: 0 12px 28px rgba(11,37,64,.04);
+        cursor: pointer;
+        transition: transform 0.25s, box-shadow 0.25s;
+        display: flex;
+        flex-direction: column;
+      }
+      .evento-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 20px 40px rgba(11,37,64,.1);
+      }
+      .evento-card .cover {
+        height: 150px;
+        background-size: cover;
+        background-position: center;
+        position: relative;
+      }
+      .price-badge {
+        position: absolute;
+        bottom: 0.8rem;
+        left: 0.8rem;
+        background: var(--navy-900);
+        color: var(--white);
+        padding: 0.3rem 0.6rem;
+        border-radius: 8px;
+        font-family: 'Playfair Display', serif;
+        font-weight: 700;
+        font-size: 0.84rem;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+      }
+      .evento-card .body { padding: 1rem; display: flex; flex-direction: column; flex-grow: 1; gap: 0.6rem; }
+      .evento-card h3 { margin: 0; color: var(--navy-900); font-family: 'Playfair Display', serif; font-size: 1.1rem; }
+      .evento-card .desc { margin: 0; color: var(--muted); font-size: 0.8rem; line-height: 1.4; flex-grow: 1; }
+      .evento-card .meta {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.74rem;
+        font-weight: 600;
+        border-top: 1px solid var(--border);
+        padding-top: 0.6rem;
+        color: var(--navy-700);
+      }
+      .spots.no-spots { color: #8A1E18; }
+      
+      .action-btn {
+        width: 100%;
+        border: 1px solid var(--gold-300);
+        border-radius: 8px;
+        background: rgba(201,162,39,0.03);
+        color: var(--gold-500);
+        padding: 0.5rem;
+        font-size: 0.8rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: 0.2s;
+        margin-top: 0.2rem;
+      }
+      .action-btn:hover { background: var(--gold-500); color: var(--navy-900); }
+      .action-btn:disabled { background: var(--cream-50) !important; border-color: var(--border) !important; color: var(--muted) !important; cursor: not-allowed; }
+
+      /* Modales Premium */
+      .modal-overlay {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(11, 37, 64, 0.45);
+        backdrop-filter: blur(5px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        padding: 1rem;
+      }
+      .modal-card {
+        background: var(--white);
+        border-radius: 24px;
+        border: 1px solid var(--border);
+        box-shadow: 0 30px 70px rgba(11,37,64,0.18);
+        width: 100%;
+        max-width: 480px;
+        padding: 1.8rem;
+        animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        position: relative;
+      }
+      @keyframes slideUp {
+        from { transform: translateY(30px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+      }
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 0.8rem;
+        margin-bottom: 1rem;
+      }
+      .modal-header h2 {
+        margin: 0.2rem 0;
+        font-family: 'Playfair Display', serif;
+        color: var(--navy-900);
+        font-size: 1.4rem;
+      }
+      .modal-header .section-desc { margin: 0; color: var(--muted); font-size: 0.8rem; }
+      .close-btn { background: none; border: none; font-size: 1.6rem; color: var(--muted); cursor: pointer; line-height: 1; }
+      .modal-desc { margin: 0 0 1rem; color: var(--muted); font-size: 0.84rem; line-height: 1.5; }
+
+      .adquisicion-section { display: grid; gap: 0.8rem; }
+      .warning-box {
+        display: flex;
+        gap: 0.6rem;
+        background: rgba(179,38,30,.06);
+        border: 1px solid rgba(179,38,30,.15);
+        padding: 0.8rem;
+        border-radius: 12px;
+      }
+      .warning-icon { font-size: 1.1rem; }
+      .warning-text { margin: 0; color: #8A1E18; font-size: 0.78rem; font-weight: 500; line-height: 1.4; }
+
+      .adquisicion-form { display: grid; gap: 0.8rem; }
+      .adquisicion-form label { display: grid; gap: 0.35rem; font-size: 0.78rem; font-weight: 700; color: var(--navy-700); }
+      .adquisicion-form select, .adquisicion-form input {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 0.58rem;
+        font: inherit;
+        background: var(--cream-50);
+        color: var(--navy-900);
+      }
+      .form-row { display: grid; grid-template-columns: 1.2fr 1fr; gap: 0.8rem; align-items: end; }
+      .unit-price {
+        display: grid;
+        justify-content: end;
+        text-align: right;
+        padding-bottom: 0.2rem;
+      }
+      .unit-price small { color: var(--muted); font-size: 0.74rem; }
+      .unit-price strong { color: var(--gold-500); font-size: 1.15rem; font-family: 'Playfair Display', serif; }
+
+      /* Resumen de Factura */
+      .summary-card {
+        background: var(--cream-50);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 1rem;
+      }
+      .summary-card h4 {
+        margin: 0 0 0.6rem;
+        color: var(--navy-900);
+        font-family: 'Playfair Display', serif;
+        font-size: 0.9rem;
+        border-bottom: 1px solid rgba(11,37,64,0.06);
+        padding-bottom: 0.3rem;
+      }
+      .summary-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem; font-size: 0.8rem; }
+      .summary-row span { color: var(--muted); }
+      .divider { height: 1px; background: var(--border); margin: 0.6rem 0; }
+      .summary-row.total { margin-bottom: 0; }
+      .total-monto { font-size: 1.2rem; color: var(--gold-500); font-family: 'Playfair Display', serif; }
+
+      .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        padding-top: 1.2rem;
+        border-top: 1px solid var(--border);
+        margin-top: 0.8rem;
+      }
+
+      /* Botones Generales */
+      .btn {
+        border: none;
+        border-radius: 9px;
+        padding: .55rem .95rem;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+        transition: .15s ease-in-out;
+        font-size: .8rem;
+      }
+      .btn.primary { background: var(--gold-500); color: var(--navy-900); }
+      .btn.primary:hover { background: var(--gold-300); transform: translateY(-1px); }
+      .btn.primary:disabled { opacity: 0.5; transform: none; cursor: not-allowed; }
+      .btn.ghost { background: transparent; color: var(--navy-700); border: 1px solid var(--border); }
+      .btn.ghost:hover { background: var(--cream-50); }
     `
   ]
 })
@@ -282,7 +762,10 @@ export class EventosClienteComponent implements OnInit {
   private readonly auth = inject(AuthService);
 
   eventos: Evento[] = [];
+  misInscripciones: InscripcionEvento[] = [];
+  
   cargando = false;
+  cargandoInscripciones = false;
   error = "";
   filtro = "";
   soloActivos = true;
@@ -290,7 +773,6 @@ export class EventosClienteComponent implements OnInit {
   mostrarModal = false;
   eventoSeleccionado: Evento | null = null;
 
-  idHuespedActual: number | null = null;
   reservasActivas: ReservaMini[] = [];
   idReservaSeleccionada: number | null = null;
   cantidadAdquirir = 1;
@@ -302,6 +784,7 @@ export class EventosClienteComponent implements OnInit {
     this.trackingService.registrarVisita("Eventos", "Ingresó al módulo");
     this.cargarEventos();
     this.cargarHuespedYReservas();
+    this.cargarMisInscripciones();
   }
 
   onFiltroChanged(val: string): void {
@@ -313,10 +796,6 @@ export class EventosClienteComponent implements OnInit {
 
   get total(): number {
     return this.eventos.length;
-  }
-
-  get activos(): number {
-    return this.eventos.filter((e) => e.ESTADO === "A").length;
   }
 
   get proximos(): number {
@@ -350,6 +829,19 @@ export class EventosClienteComponent implements OnInit {
     });
   }
 
+  cargarMisInscripciones(): void {
+    this.cargandoInscripciones = true;
+    this.api.get<InscripcionEvento[]>("/eventos/mis-reservas").subscribe({
+      next: (rows) => {
+        this.misInscripciones = rows;
+        this.cargandoInscripciones = false;
+      },
+      error: () => {
+        this.cargandoInscripciones = false;
+      }
+    });
+  }
+
   cargarHuespedYReservas(): void {
     const userId = this.auth.getUserId();
     if (!userId) return;
@@ -357,14 +849,14 @@ export class EventosClienteComponent implements OnInit {
     this.api.get<any[]>("/huespedes").subscribe({
       next: (rows) => {
         const actual = rows.find((h) => Number(h.ID_USUARIO) === userId);
-        this.idHuespedActual = actual?.ID_HUESPED ?? null;
+        const idHuespedActual = actual?.ID_HUESFED || actual?.ID_HUESPED || null;
 
-        if (this.idHuespedActual) {
+        if (idHuespedActual) {
           this.api.get<any[]>("/reservas").subscribe({
             next: (reservas) => {
               this.reservasActivas = reservas
-                .filter((r) => Number(r.ID_HUESPED) === this.idHuespedActual && 
-                  ["PENDIENTE", "CONFIRMADA"].includes(String(r.ESTADO).toUpperCase().trim()))
+                .filter((r) => Number(r.ID_HUESPED) === idHuespedActual && 
+                  String(r.ESTADO).toUpperCase().trim() === "PENDIENTE")
                 .sort((a, b) => Number(b.ID_RESERVA) - Number(a.ID_RESERVA));
             }
           });
@@ -381,7 +873,7 @@ export class EventosClienteComponent implements OnInit {
     this.errorAdquisicion = "";
     this.idReservaSeleccionada = null;
     this.cantidadAdquirir = 1;
-    this.cargarHuespedYReservas(); // recargar estado
+    this.cargarHuespedYReservas();
   }
 
   adquirir(): void {
@@ -399,10 +891,11 @@ export class EventosClienteComponent implements OnInit {
     this.api.post("/eventos/adquirir", payload).subscribe({
       next: () => {
         this.adquiriendo = false;
-        this.mensajeExito = "Entrada adquirida exitosamente y costo cargado a tu factura final.";
+        this.mensajeExito = "Tu inscripción ha sido confirmada y el costo total ha sido cargado a la factura de tu estadía.";
         this.trackingService.registrarVisita("Eventos", `Adquirió evento ${this.eventoSeleccionado?.NOMBRE}`);
-        this.idReservaSeleccionada = null;
-        this.cantidadAdquirir = 1;
+        this.cerrarModal();
+        this.cargarMisInscripciones();
+        this.cargarEventos();
       },
       error: (err) => {
         this.adquiriendo = false;
@@ -414,11 +907,16 @@ export class EventosClienteComponent implements OnInit {
   cerrarModal(): void {
     this.mostrarModal = false;
     this.eventoSeleccionado = null;
-    this.mensajeExito = "";
-    this.errorAdquisicion = "";
+    this.idReservaSeleccionada = null;
+    this.cantidadAdquirir = 1;
   }
 
   imagenPara(id: number): string {
     return `https://picsum.photos/seed/evento-${id}/900/550`;
+  }
+
+  formatearCodigoReserva(id: number): string {
+    if (!id) return "";
+    return `RES-${String(id).padStart(4, "0")}`;
   }
 }

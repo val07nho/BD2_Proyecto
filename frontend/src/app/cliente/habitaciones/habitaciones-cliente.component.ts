@@ -1,6 +1,7 @@
 import { CommonModule, DecimalPipe } from "@angular/common";
 import { Component, OnInit, inject } from "@angular/core";
-import { FormBuilder, ReactiveFormsModule, Validators } from "@angular/forms";
+import { FormsModule } from "@angular/forms";
+import { Router } from "@angular/router";
 
 import { ApiService } from "../../core/services/api.service";
 import { AuthService } from "../../core/services/auth.service";
@@ -41,14 +42,13 @@ interface Reserva {
 @Component({
   selector: "app-habitaciones-cliente",
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, DecimalPipe],
+  imports: [CommonModule, DecimalPipe],
   template: `
     <section class="cliente-habitaciones">
       <section class="hero-card">
         <div>
           <span class="eyebrow">Alojamiento</span>
           <h1>Habitaciones con reserva inmediata</h1>
-          <p>Consulta disponibilidad real y genera tu reserva usando la informacion de la base de datos.</p>
         </div>
         <div class="hero-stats">
           <article>
@@ -103,184 +103,6 @@ interface Reserva {
         }
       </section>
 
-      <!-- Modal de Reserva y Pago Simulado -->
-      @if (mostrarModal && habitacionSeleccionada) {
-        <div class="modal-backdrop" (click)="cerrarModal()">
-          <div class="modal-content" (click)="$event.stopPropagation()">
-            <header class="modal-header">
-              <div>
-                <span class="eyebrow">Reserva de Habitación</span>
-                <h2>Habitación #{{ habitacionSeleccionada.NUMERO_HABITACION }}</h2>
-                <small>{{ habitacionSeleccionada.TIPO }} • S/ {{ habitacionSeleccionada.PRECIO_NOCHE | number: '1.2-2' }} por noche</small>
-              </div>
-              <button class="close-btn" type="button" (click)="cerrarModal()">&times;</button>
-            </header>
-
-            <form [formGroup]="reservaForm" (ngSubmit)="crearReserva()">
-              <div class="modal-body-grid" [class.unregistered]="!idHuespedActual">
-                
-                <!-- Columna Izquierda -->
-                @if (!idHuespedActual) {
-                  <!-- Formulario de Registro de Huésped -->
-                  <div class="modal-form-fields" [formGroup]="registroForm">
-                    <h3>Registro de Datos Personales</h3>
-                    <p class="section-desc">Por favor completa tu perfil para continuar con la reserva.</p>
-                    
-                    <label class="form-label">
-                      Nombres
-                      <input type="text" formControlName="nombres" placeholder="Nombres" />
-                    </label>
-
-                    <label class="form-label">
-                      Apellidos
-                      <input type="text" formControlName="apellidos" placeholder="Apellidos" />
-                    </label>
-
-                    <div class="form-row-2col">
-                      <label class="form-label">
-                        Tipo Doc.
-                        <select formControlName="tipoDocumento">
-                          <option value="DNI">DNI</option>
-                          <option value="Pasaporte">Pasaporte</option>
-                        </select>
-                      </label>
-
-                      <label class="form-label">
-                        Número Doc.
-                        <input type="text" formControlName="numeroDocumento" placeholder="Número" />
-                      </label>
-                    </div>
-
-                    <label class="form-label">
-                      Nacionalidad
-                      <input type="text" formControlName="nacionalidad" />
-                    </label>
-
-                    <label class="form-label">
-                      Teléfono
-                      <input type="text" formControlName="telefono" placeholder="Ej. 999111222" />
-                    </label>
-
-                    <label class="form-label">
-                      Correo Electrónico
-                      <input type="email" formControlName="correo" placeholder="correo@ejemplo.com" />
-                    </label>
-                  </div>
-                } @else {
-                  <!-- Formulario de Reserva Normal -->
-                  <div class="modal-form-fields">
-                    <h3>Detalles de Estadía</h3>
-                    
-                    <label class="form-label">
-                      Fecha de Llegada (Ingreso)
-                      <input type="date" formControlName="fecha_ingreso" [min]="getFechaMinimaIngreso()" (change)="onFechasChanged()" />
-                    </label>
-
-                    <label class="form-label">
-                      Fecha de Salida
-                      <input type="date" formControlName="fecha_salida" [min]="getFechaMinimaSalida()" (change)="onFechasChanged()" />
-                    </label>
-
-                    <label class="form-label">
-                      Noches
-                      <input type="number" min="1" formControlName="cantidad_noches" (change)="onNochesChanged()" />
-                    </label>
-
-                    <label class="form-label">
-                      Método de Pago (Simulado)
-                      <select formControlName="metodo_pago">
-                        <option value="Tarjeta">Tarjeta de Crédito / Débito</option>
-                        <option value="Transferencia">Transferencia Bancaria</option>
-                        <option value="Efectivo">Efectivo (en Recepción)</option>
-                      </select>
-                    </label>
-                  </div>
-                }
-
-                <!-- Columna Derecha -->
-                <div class="modal-invoice-summary">
-                  <h3>Resumen y Pago</h3>
-
-                  @if (!idHuespedActual) {
-                    <!-- Si se está registrando, ponemos aquí los selectores de fechas y pago -->
-                    <div class="reservation-dates-block">
-                      <div class="form-row-2col">
-                        <label class="form-label">
-                          Llegada
-                          <input type="date" formControlName="fecha_ingreso" [min]="getFechaMinimaIngreso()" (change)="onFechasChanged()" />
-                        </label>
-
-                        <label class="form-label">
-                          Salida
-                          <input type="date" formControlName="fecha_salida" [min]="getFechaMinimaSalida()" (change)="onFechasChanged()" />
-                        </label>
-                      </div>
-
-                      <div class="form-row-2col">
-                        <label class="form-label">
-                          Noches
-                          <input type="number" min="1" formControlName="cantidad_noches" (change)="onNochesChanged()" />
-                        </label>
-
-                        <label class="form-label">
-                          Pago
-                          <select formControlName="metodo_pago">
-                            <option value="Tarjeta">Tarjeta</option>
-                            <option value="Transferencia">Transferencia</option>
-                            <option value="Efectivo">Efectivo</option>
-                          </select>
-                        </label>
-                      </div>
-                    </div>
-                    <div class="divider"></div>
-                  }
-
-                  <div class="summary-row">
-                    <span>Precio por noche</span>
-                    <strong>S/ {{ habitacionSeleccionada.PRECIO_NOCHE | number: '1.2-2' }}</strong>
-                  </div>
-                  
-                  <div class="summary-row">
-                    <span>Noches</span>
-                    <strong>{{ getNights() }}</strong>
-                  </div>
-
-                  <div class="divider"></div>
-
-                  <div class="summary-row">
-                    <span>Subtotal (sin IGV)</span>
-                    <span>S/ {{ getCalculatedSubtotal() | number: '1.2-2' }}</span>
-                  </div>
-
-                  <div class="summary-row">
-                    <span>IGV (18%)</span>
-                    <span>S/ {{ getCalculatedIgv() | number: '1.2-2' }}</span>
-                  </div>
-
-                  <div class="divider"></div>
-
-                  <div class="summary-row total">
-                    <span>Total a Pagar</span>
-                    <strong>S/ {{ getCalculatedTotal() | number: '1.2-2' }}</strong>
-                  </div>
-
-                  <div class="payment-badge">
-                    <span class="lock-icon">🔒</span>
-                    <small>Simulación de pago segura. Los fondos no se descontarán de su cuenta real.</small>
-                  </div>
-                </div>
-              </div>
-
-              <footer class="modal-footer">
-                <button type="button" class="btn-cancel" (click)="cerrarModal()">Cancelar</button>
-                <button type="submit" class="btn-confirm" [disabled]="reservaForm.invalid || (!idHuespedActual && registroForm.invalid) || guardando">
-                  {{ guardando ? 'Procesando...' : (idHuespedActual ? 'Confirmar Reserva y Pagar' : 'Registrar y Pagar') }}
-                </button>
-              </footer>
-            </form>
-          </div>
-        </div>
-      }
     </section>
   `,
   styles: [
@@ -711,38 +533,18 @@ interface Reserva {
 export class HabitacionesClienteComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly auth = inject(AuthService);
-  private readonly fb = inject(FormBuilder);
+  private readonly router = inject(Router);
   private readonly trackingService = inject(TrackingService);
 
   habitaciones: Habitacion[] = [];
   reservas: Reserva[] = [];
   idHuespedActual: number | null = null;
-  habitacionSeleccionada: Habitacion | null = null;
-  mostrarModal = false;
 
   cargandoHabitaciones = false;
   cargandoReservas = false;
   guardando = false;
   mensaje = "";
   error = "";
-
-  readonly reservaForm = this.fb.group({
-    id_habitacion: [null as number | null, [Validators.required]],
-    fecha_ingreso: ["", [Validators.required]],
-    fecha_salida: ["", [Validators.required]],
-    cantidad_noches: [1, [Validators.required, Validators.min(1)]],
-    metodo_pago: ["Tarjeta", [Validators.required]]
-  });
-
-  readonly registroForm = this.fb.group({
-    nombres: ["", [Validators.required]],
-    apellidos: ["", [Validators.required]],
-    tipoDocumento: ["DNI", [Validators.required]],
-    numeroDocumento: ["", [Validators.required]],
-    telefono: ["", [Validators.required]],
-    correo: ["", [Validators.required, Validators.email]],
-    nacionalidad: ["Peru", [Validators.required]]
-  });
 
   ngOnInit(): void {
     this.trackingService.registrarVisita("Habitaciones", "Ingresó al módulo");
@@ -753,8 +555,8 @@ export class HabitacionesClienteComponent implements OnInit {
   filtro = "";
 
   get habitacionesDisponibles(): Habitacion[] {
-    return this.habitaciones.filter((h) => 
-      h.ESTADO === "Disponible" && 
+    return this.habitaciones.filter((h) =>
+      h.ESTADO === "Disponible" &&
       (h.TIPO.toLowerCase().includes(this.filtro.toLowerCase()) || h.NUMERO_HABITACION.toLowerCase().includes(this.filtro.toLowerCase()))
     );
   }
@@ -821,237 +623,7 @@ export class HabitacionesClienteComponent implements OnInit {
 
   seleccionarHabitacion(h: Habitacion): void {
     this.trackingService.registrarVisita("Habitaciones", `Ver habitación ${h.TIPO} ${h.NUMERO_HABITACION}`);
-    this.habitacionSeleccionada = h;
-    this.reservaForm.patchValue({
-      id_habitacion: h.ID_HABITACION,
-      fecha_ingreso: "",
-      fecha_salida: "",
-      cantidad_noches: 1,
-      metodo_pago: "Tarjeta"
-    });
-
-    if (!this.idHuespedActual) {
-      const nombreUsuario = this.auth.getUserNombre() || "";
-      const emailUsuario = this.auth.getUsername() || "";
-      
-      const parts = nombreUsuario.split(" ").filter(Boolean);
-      const nombres = parts.slice(0, Math.max(parts.length - 1, 1)).join(" ") || nombreUsuario;
-      const apellidos = parts.length > 1 ? parts.slice(-1).join(" ") : "";
-
-      this.registroForm.patchValue({
-        nombres: nombres,
-        apellidos: apellidos,
-        correo: emailUsuario,
-        tipoDocumento: "DNI",
-        nacionalidad: "Peru",
-        telefono: ""
-      });
-    }
-
-    this.mostrarModal = true;
-  }
-
-  cerrarModal(): void {
-    this.mostrarModal = false;
-    this.habitacionSeleccionada = null;
-    this.reservaForm.reset({
-      id_habitacion: null,
-      fecha_ingreso: "",
-      fecha_salida: "",
-      cantidad_noches: 1,
-      metodo_pago: "Tarjeta"
-    });
-    this.registroForm.reset({
-      nombres: "",
-      apellidos: "",
-      tipoDocumento: "DNI",
-      numeroDocumento: "",
-      telefono: "",
-      correo: "",
-      nacionalidad: "Peru"
-    });
-  }
-
-  getFechaMinimaIngreso(): string {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, "0");
-    const day = String(today.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  }
-
-  getFechaMinimaSalida(): string {
-    const start = this.reservaForm.value.fecha_ingreso;
-    if (start) {
-      const startDate = new Date(`${start}T00:00:00`);
-      startDate.setDate(startDate.getDate() + 1);
-      const year = startDate.getFullYear();
-      const month = String(startDate.getMonth() + 1).padStart(2, "0");
-      const day = String(startDate.getDate()).padStart(2, "0");
-      return `${year}-${month}-${day}`;
-    }
-    const today = new Date();
-    today.setDate(today.getDate() + 1);
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, "0");
-    const day = String(today.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  }
-
-  onFechasChanged(): void {
-    const start = this.reservaForm.value.fecha_ingreso;
-    const end = this.reservaForm.value.fecha_salida;
-    if (start && end) {
-      const nights = this.calcularNoches(start, end);
-      if (nights > 0) {
-        this.reservaForm.patchValue({ cantidad_noches: nights });
-      }
-    }
-  }
-
-  onNochesChanged(): void {
-    const nights = Number(this.reservaForm.value.cantidad_noches || 1);
-    const start = this.reservaForm.value.fecha_ingreso;
-    if (start && nights > 0) {
-      const startDate = new Date(`${start}T00:00:00`);
-      startDate.setDate(startDate.getDate() + nights);
-      const year = startDate.getFullYear();
-      const month = String(startDate.getMonth() + 1).padStart(2, "0");
-      const day = String(startDate.getDate()).padStart(2, "0");
-      this.reservaForm.patchValue({
-        fecha_salida: `${year}-${month}-${day}`
-      });
-    }
-  }
-
-  getNights(): number {
-    return Number(this.reservaForm.value.cantidad_noches || 1);
-  }
-
-  getCalculatedTotal(): number {
-    if (!this.habitacionSeleccionada) return 0;
-    return Number(this.habitacionSeleccionada.PRECIO_NOCHE) * this.getNights();
-  }
-
-  getCalculatedSubtotal(): number {
-    return Number((this.getCalculatedTotal() / 1.18).toFixed(2));
-  }
-
-  getCalculatedIgv(): number {
-    return Number((this.getCalculatedTotal() - this.getCalculatedSubtotal()).toFixed(2));
-  }
-
-  crearReserva(): void {
-    if (this.reservaForm.invalid) {
-      this.reservaForm.markAllAsTouched();
-      return;
-    }
-
-    if (!this.idHuespedActual && this.registroForm.invalid) {
-      this.registroForm.markAllAsTouched();
-      return;
-    }
-
-    this.guardando = true;
-    this.error = "";
-    this.mensaje = "";
-
-    if (!this.idHuespedActual) {
-      const regValue = this.registroForm.getRawValue();
-      const userId = this.auth.getUserId();
-      
-      const payloadHuesped = {
-        id_usuario: userId,
-        nombres: regValue.nombres,
-        apellidos: regValue.apellidos,
-        tipo_documento: regValue.tipoDocumento,
-        numero_documento: regValue.numeroDocumento,
-        telefono: regValue.telefono,
-        correo: regValue.correo,
-        nacionalidad: regValue.nacionalidad
-      };
-
-      this.api.post("/huespedes", payloadHuesped).subscribe({
-        next: () => {
-          this.api.get<Huesped[]>("/huespedes").subscribe({
-            next: (rows) => {
-              const actual = rows.find((h) => Number(h.ID_USUARIO) === userId);
-              this.idHuespedActual = actual?.ID_HUESPED ?? null;
-              
-              if (!this.idHuespedActual) {
-                this.guardando = false;
-                this.error = "Error al resolver el ID del huésped creado.";
-                return;
-              }
-              
-              this.ejecutarReserva();
-            },
-            error: () => {
-              this.guardando = false;
-              this.error = "Huésped registrado, pero no se pudo cargar su perfil para reservar.";
-            }
-          });
-        },
-        error: () => {
-          this.guardando = false;
-          this.error = "No se pudo registrar la información del huésped.";
-        }
-      });
-    } else {
-      this.ejecutarReserva();
-    }
-  }
-
-  ejecutarReserva(): void {
-    const value = this.reservaForm.getRawValue();
-    const habitacion = this.habitaciones.find((h) => h.ID_HABITACION === value.id_habitacion);
-
-    if (!habitacion) {
-      this.error = "Selecciona una habitacion valida.";
-      this.guardando = false;
-      return;
-    }
-
-    const noches = this.calcularNoches(value.fecha_ingreso || "", value.fecha_salida || "");
-    if (noches <= 0) {
-      this.error = "La fecha de salida debe ser mayor que la fecha de ingreso.";
-      this.guardando = false;
-      return;
-    }
-
-    const payload = {
-      fecha_ingreso: value.fecha_ingreso,
-      fecha_salida: value.fecha_salida,
-      estado: "CONFIRMADA",
-      id_huesped: this.idHuespedActual,
-      id_habitacion: habitacion.ID_HABITACION,
-      precio_noche: Number(habitacion.PRECIO_NOCHE),
-      cantidad_noches: value.cantidad_noches || noches,
-      total: Number(habitacion.PRECIO_NOCHE) * (value.cantidad_noches || noches),
-      metodo_pago: value.metodo_pago
-    };
-
-    this.api.post("/reservas", payload).subscribe({
-      next: () => {
-        this.guardando = false;
-        this.mensaje = "¡Reserva y simulación de pago registradas correctamente!";
-        this.cerrarModal();
-        this.cargarReservas();
-        this.cargarHabitaciones();
-      },
-      error: () => {
-        this.guardando = false;
-        this.error = "No se pudo crear la reserva y el pago.";
-      }
-    });
-  }
-
-  calcularNoches(inicio: string, fin: string): number {
-    if (!inicio || !fin) return 1;
-    const start = new Date(`${inicio}T00:00:00`);
-    const end = new Date(`${fin}T00:00:00`);
-    const diff = end.getTime() - start.getTime();
-    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+    this.router.navigate(["/cliente/reservas"], { queryParams: { habitacion: h.ID_HABITACION } });
   }
 
   imagenPara(tipo: string): string {

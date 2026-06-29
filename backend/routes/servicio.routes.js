@@ -5,6 +5,7 @@ const { requireAuth, requireRole } = require("../middleware/auth.middleware");
 const router = Router();
 
 router.get("/", controller.listServicios);
+router.get("/mis-servicios", requireAuth, controller.getMisServicios);
 router.post("/adquirir", requireAuth, controller.adquirirServicio);
 router.post("/", requireAuth, requireRole("ADMIN"), controller.createServicio);
 router.put("/:id", requireAuth, requireRole("ADMIN"), controller.updateServicio);

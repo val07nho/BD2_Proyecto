@@ -1,7 +1,7 @@
 import { CommonModule, DatePipe, DecimalPipe } from "@angular/common";
 import { Component, OnInit, inject } from "@angular/core";
-import { FormBuilder, ReactiveFormsModule, Validators } from "@angular/forms";
-import { RouterLink } from "@angular/router";
+import { FormBuilder, ReactiveFormsModule, FormsModule, Validators } from "@angular/forms";
+import { ActivatedRoute, RouterLink } from "@angular/router";
 
 import { ApiService } from "../../core/services/api.service";
 import { AuthService } from "../../core/services/auth.service";
@@ -30,6 +30,7 @@ interface Reserva {
   ID_HUESPED: number;
   ID_HABITACION?: number;
   NUMERO_HABITACION?: string;
+  TIPO_HABITACION?: string;
   PRECIO_NOCHE?: number;
   CANTIDAD_NOCHES?: number;
   SUBTOTAL?: number;
@@ -38,14 +39,14 @@ interface Reserva {
 @Component({
   selector: "app-reservas-cliente",
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, DatePipe, DecimalPipe],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterLink, DatePipe, DecimalPipe],
   template: `
     <section class="cliente-reservas">
       <section class="hero">
         <div>
           <span class="eyebrow">Reservas</span>
-          <h1>Gestiona tu estadia</h1>
-          <p>Flujo conectado con RESERVA y DETALLE_RESERVA para crear, reprogramar y cancelar de forma consistente.</p>
+          <h1>Gestiona tu estadía</h1>
+          <p>Consulta tus reservas activas, realiza pagos de facturación y coordina tus próximas fechas en el hotel.</p>
         </div>
 
         <div class="hero-stats">
@@ -71,103 +72,66 @@ interface Reserva {
         <div class="alert error">{{ error }}</div>
       }
 
-      <section class="grid">
-        <article class="card form-card">
-          <div class="card-head">
-            <h3>{{ editando ? 'Reprogramar reserva' : 'Nueva reserva' }}</h3>
-            <a class="link" routerLink="/cliente/habitaciones">Ver habitaciones</a>
-          </div>
-
-          <form [formGroup]="form" (ngSubmit)="guardar()" class="form-grid">
-            <label>
-              Habitacion
-              <select formControlName="id_habitacion">
-                <option [ngValue]="null">Selecciona...</option>
-                @for (h of habitacionesDisponibles; track h.ID_HABITACION) {
-                  <option [ngValue]="h.ID_HABITACION">
-                    #{{ h.NUMERO_HABITACION }} - {{ h.TIPO }} (S/ {{ h.PRECIO_NOCHE | number: '1.2-2' }})
-                  </option>
-                }
-              </select>
-            </label>
-
-            <label>
-              Fecha ingreso
-              <input type="date" formControlName="fecha_ingreso" />
-            </label>
-
-            <label>
-              Fecha salida
-              <input type="date" formControlName="fecha_salida" />
-            </label>
-
-            <label>
-              Cantidad noches
-              <input type="number" min="1" formControlName="cantidad_noches" />
-            </label>
-
-            <div class="preview" *ngIf="habitacionFormulario as habPreview">
-              <small>Total estimado</small>
-              <strong>S/ {{ totalFormulario(habPreview.PRECIO_NOCHE) | number: '1.2-2' }}</strong>
-            </div>
-
-            <div class="actions">
-              <button class="btn primary" type="submit" [disabled]="form.invalid || guardando || !idHuespedActual">
-                {{ guardando ? 'Guardando...' : (editando ? 'Actualizar' : 'Crear reserva') }}
-              </button>
-              <button class="btn ghost" type="button" (click)="cancelarEdicion()" [disabled]="guardando">Limpiar</button>
-            </div>
-          </form>
-
-          @if (!idHuespedActual) {
-            <p class="note">Tu usuario no tiene registro en HUESPED. Sin ese enlace no se puede guardar una reserva.</p>
-          }
-        </article>
-
+      <section class="main-panel">
         <article class="card table-card">
           <div class="table-head">
-            <h3>Mis reservas</h3>
-            <button class="btn ghost" type="button" (click)="cargarReservas()" [disabled]="cargandoReservas">Actualizar</button>
+            <div>
+              <h3>Mis Reservas Activas</h3>
+              <p class="subtitle">Lista general de estadías reservadas en el sistema corporativo.</p>
+            </div>
+            <div class="head-actions">
+              <button class="btn primary" type="button" (click)="abrirModalNuevaReserva()">
+                <span class="plus-icon">+</span> Nueva Reserva
+              </button>
+              <button class="btn ghost" type="button" (click)="cargarReservas()" [disabled]="cargandoReservas">Actualizar</button>
+            </div>
           </div>
 
           @if (cargandoReservas) {
             <p class="empty">Cargando reservas...</p>
           } @else if (reservas.length === 0) {
-            <p class="empty">Aun no tienes reservas registradas.</p>
+            <div class="empty-state">
+              <span class="icon">📅</span>
+              <p>Aún no tienes reservas registradas en tu historial.</p>
+              <button class="btn primary" type="button" (click)="abrirModalNuevaReserva()">Reservar una Habitación</button>
+            </div>
           } @else {
             <div class="table-wrap">
               <table>
                 <thead>
                   <tr>
-                    <th>ID</th>
-                    <th>Habitacion</th>
+                    <th>Código de Reserva</th>
+                    <th>Habitación</th>
                     <th>Ingreso</th>
                     <th>Salida</th>
-                    <th>Noches</th>
                     <th>Estado</th>
-                    <th>Total</th>
-                    <th>Acciones</th>
+                    <th>Total Facturado</th>
+                    <th>Acciones de Gestión</th>
                   </tr>
                 </thead>
                 <tbody>
                   @for (r of reservas; track r.ID_RESERVA) {
                     <tr>
-                      <td>#{{ r.ID_RESERVA }}</td>
-                      <td>{{ r.NUMERO_HABITACION || '-' }}</td>
-                      <td>{{ r.FECHA_INGRESO | date: 'yyyy-MM-dd' }}</td>
-                      <td>{{ r.FECHA_SALIDA | date: 'yyyy-MM-dd' }}</td>
-                      <td>{{ r.CANTIDAD_NOCHES || calcularNoches(r.FECHA_INGRESO, r.FECHA_SALIDA) }}</td>
+                      <td class="res-code">{{ formatearCodigoReserva(r.ID_RESERVA) }}</td>
                       <td>
-                        <span class="status" [class.cancelada]="normalizarEstado(r.ESTADO) === 'CANCELADA'">
+                        <strong>{{ r.NUMERO_HABITACION ? 'Hab. N° ' + r.NUMERO_HABITACION : '-' }}</strong>
+                      </td>
+                      <td>{{ r.FECHA_INGRESO | date: 'dd MMM, yyyy' }}</td>
+                      <td>{{ r.FECHA_SALIDA | date: 'dd MMM, yyyy' }}</td>
+                      <td>
+                        <span class="status" [class]="normalizarEstado(r.ESTADO).toLowerCase()">
                           {{ r.ESTADO }}
                         </span>
                       </td>
-                      <td>S/ {{ (r.TOTAL || r.SUBTOTAL || 0) | number: '1.2-2' }}</td>
+                      <td class="amount">S/ {{ r.TOTAL | number: '1.2-2' }}</td>
                       <td>
                         <div class="row-actions">
-                          <button class="action" type="button" (click)="editarReserva(r)" [disabled]="normalizarEstado(r.ESTADO) === 'CANCELADA' || normalizarEstado(r.ESTADO) === 'FINALIZADA'">Editar</button>
-                          <button class="action warn" type="button" (click)="cancelarReserva(r)" [disabled]="normalizarEstado(r.ESTADO) !== 'PENDIENTE'">Cancelar reserva</button>
-                          <button class="action success" type="button" (click)="finalizarReserva(r)" [disabled]="normalizarEstado(r.ESTADO) === 'CANCELADA' || normalizarEstado(r.ESTADO) === 'FINALIZADA'">Finalizar</button>
+                          @if (normalizarEstado(r.ESTADO) === 'PENDIENTE') {
+                            <button class="action pay-btn" type="button" (click)="abrirModalPago(r)">Pagar Factura</button>
+                            <button class="action edit-btn" type="button" (click)="editarReserva(r)">Modificar</button>
+                          }
+                          <button class="action warn-btn" type="button" (click)="cancelarReserva(r)" [disabled]="normalizarEstado(r.ESTADO) === 'CANCELADA' || normalizarEstado(r.ESTADO) === 'FINALIZADA'">Cancelar</button>
+                          <button class="action primary-btn" type="button" (click)="finalizarReserva(r)" [disabled]="normalizarEstado(r.ESTADO) !== 'CONFIRMADA'">Finalizar Estadía</button>
                         </div>
                       </td>
                     </tr>
@@ -178,6 +142,156 @@ interface Reserva {
           }
         </article>
       </section>
+
+      <!-- Modal de Nueva / Editar Reserva -->
+      @if (mostrarModalNuevaReserva) {
+        <div class="modal-backdrop" (click)="cerrarModalNuevaReserva()">
+          <div class="modal-content new-reserva-modal" (click)="$event.stopPropagation()">
+            <header class="modal-header">
+              <div>
+                <span class="eyebrow">Alojamiento</span>
+                <h2>{{ editando ? 'Modificar Tu Reserva' : 'Nueva Reserva de Habitación' }}</h2>
+                <p class="section-desc">Completa los detalles de tu estancia para proceder con la reserva.</p>
+              </div>
+              <button class="close-btn" type="button" (click)="cerrarModalNuevaReserva()">&times;</button>
+            </header>
+
+            <form [formGroup]="form" (ngSubmit)="guardar()" class="modal-form-grid">
+              <label class="form-label">
+                Habitación Seleccionada
+                <select formControlName="id_habitacion">
+                  <option [ngValue]="null">Selecciona una habitación disponible...</option>
+                  @for (h of habitacionesDisponibles; track h.ID_HABITACION) {
+                    <option [ngValue]="h.ID_HABITACION">
+                      Habitación {{ h.NUMERO_HABITACION }} - {{ h.TIPO }} (S/ {{ h.PRECIO_NOCHE | number: '1.2-2' }} por noche)
+                    </option>
+                  }
+                </select>
+              </label>
+
+              <div class="form-row-2col">
+                <label class="form-label">
+                  Fecha de Entrada
+                  <input type="date" formControlName="fecha_ingreso" />
+                </label>
+
+                <label class="form-label">
+                  Fecha de Salida
+                  <input type="date" formControlName="fecha_salida" />
+                </label>
+              </div>
+
+              <label class="form-label">
+                Cantidad de Noches
+                <input type="number" min="1" formControlName="cantidad_noches" />
+              </label>
+
+              @if (habitacionFormulario) {
+                <div class="summary-card">
+                  <h4>Resumen del Costo de Alojamiento</h4>
+                  <div class="summary-row">
+                    <span>Precio por noche:</span>
+                    <strong>S/ {{ habitacionFormulario.PRECIO_NOCHE | number: '1.2-2' }}</strong>
+                  </div>
+                  <div class="summary-row">
+                    <span>Noches de estadía:</span>
+                    <strong>{{ obtenerNochesFormulario() }}</strong>
+                  </div>
+                  <div class="divider"></div>
+                  <div class="summary-row total">
+                    <span>Costo Estimado Total:</span>
+                    <strong class="total-monto">S/ {{ totalFormulario(habitacionFormulario.PRECIO_NOCHE) | number: '1.2-2' }}</strong>
+                  </div>
+                </div>
+              }
+
+              @if (!idHuespedActual) {
+                <p class="note">Tu usuario no tiene registro en HUESPED. Sin ese enlace no se puede guardar una reserva.</p>
+              }
+
+              <footer class="modal-footer">
+                <button type="button" class="btn ghost" (click)="cerrarModalNuevaReserva()">Cancelar</button>
+                <button type="submit" class="btn primary" [disabled]="form.invalid || guardando || !idHuespedActual">
+                  {{ guardando ? 'Procesando...' : (editando ? 'Guardar Cambios' : 'Confirmar Reserva') }}
+                </button>
+              </footer>
+            </form>
+          </div>
+        </div>
+      }
+
+      <!-- Modal de Pasarela de Pago Premium -->
+      @if (mostrarModalPago && reservaParaPagar) {
+        <div class="modal-backdrop" (click)="cerrarModalPago()">
+          <div class="modal-content payment-modal" (click)="$event.stopPropagation()">
+            <header class="modal-header">
+              <div>
+                <span class="eyebrow">Pasarela de Pago</span>
+                <h2>Procesar Transacción</h2>
+                <p class="section-desc">Código de Reserva: {{ formatearCodigoReserva(reservaParaPagar.ID_RESERVA) }}</p>
+              </div>
+              <button class="close-btn" type="button" (click)="cerrarModalPago()">&times;</button>
+            </header>
+
+            <div class="modal-body">
+              <div class="payment-details-card">
+                <h4>Detalle de Facturación de Estancia</h4>
+                <div class="detail-row">
+                  <span>Habitación asignada:</span>
+                  <strong>Habitación N° {{ reservaParaPagar.NUMERO_HABITACION || '-' }}</strong>
+                </div>
+                <div class="detail-row">
+                  <span>Fecha de Entrada:</span>
+                  <span>{{ reservaParaPagar.FECHA_INGRESO | date: 'dd MMM, yyyy' }}</span>
+                </div>
+                <div class="detail-row">
+                  <span>Fecha de Salida:</span>
+                  <span>{{ reservaParaPagar.FECHA_SALIDA | date: 'dd MMM, yyyy' }}</span>
+                </div>
+                <div class="detail-row">
+                  <span>Noches contratadas:</span>
+                  <span>{{ reservaParaPagar.CANTIDAD_NOCHES || calcularNoches(reservaParaPagar.FECHA_INGRESO, reservaParaPagar.FECHA_SALIDA) }} noches</span>
+                </div>
+                <div class="divider"></div>
+                <div class="detail-row">
+                  <span>Subtotal Factura:</span>
+                  <span>S/ {{ (reservaParaPagar.TOTAL / 1.18) | number: '1.2-2' }}</span>
+                </div>
+                <div class="detail-row">
+                  <span>IGV (18%):</span>
+                  <span>S/ {{ (reservaParaPagar.TOTAL - (reservaParaPagar.TOTAL / 1.18)) | number: '1.2-2' }}</span>
+                </div>
+                <div class="divider"></div>
+                <div class="detail-row total">
+                  <span>Monto Total a Pagar:</span>
+                  <strong class="total-monto">S/ {{ reservaParaPagar.TOTAL | number: '1.2-2' }}</strong>
+                </div>
+              </div>
+
+              <label class="form-label" style="margin-top: 1.2rem; display: block; font-weight: 700; font-size: 0.8rem; color: var(--navy-700);">
+                Selecciona tu Método de Pago
+                <select [(ngModel)]="metodoPagoSimulado" style="width: 100%; margin-top: 0.35rem; border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem; background: var(--cream-50); color: var(--navy-900); font: inherit;">
+                  <option value="Tarjeta">Tarjeta de Crédito / Débito</option>
+                  <option value="Transferencia">Transferencia Bancaria Directa</option>
+                  <option value="Efectivo">Efectivo en Recepción de Hotel</option>
+                </select>
+              </label>
+
+              <div class="payment-badge">
+                <span class="lock-icon">🔒</span>
+                <small>Transacción encriptada bajo protocolo de alta seguridad SSL de 256 bits.</small>
+              </div>
+            </div>
+
+            <footer class="modal-footer" style="display: flex; justify-content: flex-end; gap: 0.75rem; padding-top: 1rem; border-top: 1px solid var(--border); margin-top: 1.2rem;">
+              <button type="button" class="btn ghost" (click)="cerrarModalPago()" [disabled]="pagandoSimulado">Cancelar</button>
+              <button type="button" class="btn primary" (click)="procesarPagoSimulado()" [disabled]="pagandoSimulado">
+                {{ pagandoSimulado ? 'Verificando Fondos...' : 'Confirmar Transacción' }}
+              </button>
+            </footer>
+          </div>
+        </div>
+      }
     </section>
   `,
   styles: [
@@ -196,111 +310,246 @@ interface Reserva {
         font-family: 'Inter', system-ui, sans-serif;
       }
       * { box-sizing: border-box; }
-      .cliente-reservas { display: grid; gap: 1rem; }
+      .cliente-reservas { display: grid; gap: 1.2rem; }
+      
       .hero {
         border-radius: 24px;
-        padding: 1.5rem;
+        padding: 1.5rem 1.8rem;
         background: linear-gradient(120deg, #F3E9D6, var(--cream-50));
         border: 1px solid var(--border);
         box-shadow: var(--shadow);
         display: flex;
         justify-content: space-between;
-        gap: 1rem;
+        gap: 1.2rem;
         flex-wrap: wrap;
       }
       .eyebrow { color: var(--gold-500); text-transform: uppercase; letter-spacing: .14em; font-size: .74rem; font-weight: 900; }
-      .hero h1 { margin: .3rem 0 .45rem; color: var(--navy-900); font-family: 'Playfair Display', serif; font-size: 1.9rem; }
-      .hero p { margin: 0; color: var(--muted); max-width: 640px; }
-      .hero-stats { display: grid; grid-template-columns: repeat(3, minmax(110px, 1fr)); gap: .65rem; align-content: start; }
-      .hero-stats article { background: var(--white); border: 1px solid var(--border); border-radius: 12px; padding: .75rem .8rem; }
-      .hero-stats strong { display: block; color: var(--navy-900); font-family: 'Playfair Display', serif; font-size: 1.25rem; }
-      .hero-stats small { color: var(--muted); font-size: .76rem; }
+      .hero h1 { margin: .3rem 0 .45rem; color: var(--navy-900); font-family: 'Playfair Display', serif; font-size: 2rem; }
+      .hero p { margin: 0; color: var(--muted); max-width: 640px; font-size: 0.9rem; line-height: 1.5; }
+      .hero-stats { display: grid; grid-template-columns: repeat(3, minmax(110px, 1fr)); gap: .75rem; align-content: start; }
+      .hero-stats article { background: var(--white); border: 1px solid var(--border); border-radius: 14px; padding: .8rem .9rem; box-shadow: 0 4px 10px rgba(0,0,0,0.02); }
+      .hero-stats strong { display: block; color: var(--navy-900); font-family: 'Playfair Display', serif; font-size: 1.4rem; }
+      .hero-stats small { color: var(--muted); font-size: .78rem; }
 
-      .alert { border-radius: 12px; padding: .72rem .92rem; font-weight: 600; font-size: .86rem; }
-      .alert.success { background: rgba(46,125,50,.12); color: #1F5F23; border: 1px solid rgba(46,125,50,.24); }
+      .alert { border-radius: 12px; padding: .75rem 1rem; font-weight: 600; font-size: .86rem; }
+      .alert.success { background: rgba(201,162,39,.1); color: #8A6A00; border: 1px solid rgba(201,162,39,.2); }
       .alert.error { background: rgba(179,38,30,.1); color: #8A1E18; border: 1px solid rgba(179,38,30,.25); }
 
-      .grid { display: grid; grid-template-columns: minmax(310px, 390px) 1fr; gap: 1rem; align-items: start; }
+      .main-panel { width: 100%; }
       .card {
-        border-radius: 16px;
+        border-radius: 20px;
         background: var(--white);
         border: 1px solid var(--border);
         box-shadow: var(--shadow);
-        padding: 1rem 1.05rem;
+        padding: 1.5rem 1.6rem;
       }
-      .card-head, .table-head { display: flex; justify-content: space-between; align-items: center; gap: .7rem; margin-bottom: .8rem; flex-wrap: wrap; }
-      h3 { margin: 0; color: var(--navy-900); font-family: 'Playfair Display', serif; font-size: 1.2rem; }
-      .link { color: var(--navy-700); text-decoration: none; font-size: .82rem; font-weight: 700; }
+      
+      .table-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1.4rem; flex-wrap: wrap; }
+      .table-head h3 { margin: 0; color: var(--navy-900); font-family: 'Playfair Display', serif; font-size: 1.35rem; }
+      .table-head .subtitle { margin: 0.2rem 0 0; color: var(--muted); font-size: 0.8rem; }
+      .head-actions { display: flex; gap: 0.6rem; }
 
-      .form-grid { display: grid; gap: .76rem; }
-      label { display: grid; gap: .34rem; font-size: .78rem; font-weight: 700; color: var(--navy-700); }
-      input, select {
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        padding: .58rem .62rem;
-        font: inherit;
-        background: var(--cream-50);
-        color: var(--navy-900);
-      }
-      .preview {
-        border: 1px dashed rgba(11,37,64,.22);
-        border-radius: 10px;
-        background: #F8F4EA;
-        padding: .6rem .7rem;
-      }
-      .preview small { display: block; color: var(--muted); font-size: .75rem; }
-      .preview strong { color: var(--navy-900); font-size: 1.04rem; font-family: 'Playfair Display', serif; }
-      .actions { display: flex; gap: .55rem; }
-      .btn {
-        border: none;
-        border-radius: 9px;
-        padding: .56rem .84rem;
-        font-size: .82rem;
-        font-weight: 700;
-        cursor: pointer;
-      }
-      .btn.primary { background: var(--gold-500); color: var(--navy-900); }
-      .btn.ghost { background: var(--cream-50); color: var(--navy-900); border: 1px solid var(--border); }
-      .btn:disabled { opacity: .7; cursor: not-allowed; }
-      .note { margin: .7rem 0 0; color: #8A1E18; font-size: .82rem; }
+      .table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); }
+      table { width: 100%; border-collapse: collapse; text-align: left; font-size: .86rem; min-width: 900px; }
+      th, td { padding: 0.95rem 1rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+      th { background: #FAF9F6; color: var(--navy-700); font-weight: 800; font-size: .76rem; text-transform: uppercase; letter-spacing: 0.05em; }
+      td { color: var(--navy-900); }
+      
+      .res-code { font-family: 'Courier New', monospace; font-weight: 700; color: var(--navy-700); }
+      .amount { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 0.95rem; }
+      
+      .empty-state { text-align: center; padding: 3rem 1rem; display: grid; justify-items: center; gap: 0.8rem; }
+      .empty-state .icon { font-size: 2.5rem; }
+      .empty-state p { color: var(--muted); margin: 0; font-size: 0.9rem; }
+      .empty { text-align: center; color: var(--muted); font-style: italic; padding: 2rem 0; margin: 0; }
 
-      .table-wrap { overflow-x: auto; }
-      table { width: 100%; border-collapse: collapse; min-width: 860px; }
-      th, td { border-bottom: 1px solid var(--border); padding: .66rem .5rem; text-align: left; color: var(--navy-900); font-size: .83rem; }
-      th { text-transform: uppercase; font-size: .71rem; color: var(--muted); letter-spacing: .05em; }
       .status {
         display: inline-block;
-        padding: .2rem .52rem;
-        border-radius: 999px;
-        background: rgba(11,37,64,.08);
-        color: var(--navy-900);
-        font-size: .72rem;
+        padding: .25rem .6rem;
+        border-radius: 8px;
         font-weight: 700;
+        font-size: .74rem;
+        text-transform: uppercase;
       }
-      .status.cancelada { background: rgba(179,38,30,.12); color: #8A1E18; }
-      .row-actions { display: flex; gap: .35rem; }
+      .status.pendiente { background: rgba(201,162,39,.12); color: #8A6A00; }
+      .status.confirmada { background: rgba(11,37,64,.08); color: var(--navy-700); }
+      .status.finalizada { background: rgba(92,107,128,.1); color: var(--muted); }
+      .status.cancelada { background: rgba(179,38,30,.08); color: #8A1E18; }
+
+      .row-actions { display: flex; gap: .4rem; flex-wrap: wrap; }
       .action {
         border: 1px solid var(--border);
-        background: var(--cream-50);
-        color: var(--navy-900);
         border-radius: 8px;
-        padding: .3rem .5rem;
-        font-size: .75rem;
+        padding: .4rem .6rem;
+        font: inherit;
+        font-size: .76rem;
+        font-weight: 700;
         cursor: pointer;
+        background: var(--white);
+        color: var(--navy-900);
+        transition: .15s ease-in-out;
       }
-      .action.warn { color: #8A6A00; border-color: #E3C77E; }
-      .action.success { color: #1F5F23; border-color: rgba(46,125,50,.35); }
-      .action.danger { color: #8A1E18; border-color: rgba(179,38,30,.35); }
-      .empty { color: var(--muted); text-align: center; padding: .9rem; }
+      .action:hover { background: var(--cream-50); border-color: var(--gold-300); }
+      .action.pay-btn { color: var(--gold-500); border-color: var(--gold-300); background: rgba(201,162,39,0.03); }
+      .action.pay-btn:hover { background: rgba(201,162,39,0.08); }
+      .action.edit-btn { color: var(--navy-700); }
+      .action.warn-btn { color: #8A1E18; border-color: rgba(179,38,30,.2); }
+      .action.warn-btn:hover { background: rgba(179,38,30,.05); }
+      .action.primary-btn { border-color: var(--navy-700); color: var(--navy-700); }
+      .action.primary-btn:hover { background: rgba(22,57,94,0.05); }
+      .action:disabled { opacity: .4; cursor: not-allowed; border-color: var(--border) !important; color: var(--muted) !important; background: var(--white) !important; }
 
-      @media (max-width: 1080px) {
-        .grid { grid-template-columns: 1fr; }
-        .hero-stats { grid-template-columns: repeat(2, minmax(110px, 1fr)); }
+      /* Botones Generales */
+      .btn {
+        border: none;
+        border-radius: 10px;
+        padding: .68rem 1.1rem;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+        transition: .2s;
+        font-size: .84rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
       }
-      @media (max-width: 680px) {
-        .hero h1 { font-size: 1.5rem; }
-        .hero-stats { grid-template-columns: 1fr; }
+      .btn.primary { background: var(--gold-500); color: var(--navy-900); }
+      .btn.primary:hover { background: var(--gold-300); transform: translateY(-1px); }
+      .btn.ghost { background: transparent; color: var(--navy-700); border: 1px solid var(--border); }
+      .btn.ghost:hover { background: var(--cream-50); }
+      .btn:disabled { opacity: .5; cursor: not-allowed; transform: none !important; }
+      .plus-icon { font-size: 1.1rem; line-height: 1; }
+
+      /* Estructuras de Modales Premium */
+      .modal-backdrop {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(11, 37, 64, 0.45);
+        backdrop-filter: blur(5px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        padding: 1rem;
       }
+      .modal-content {
+        background: var(--white);
+        border-radius: 24px;
+        border: 1px solid var(--border);
+        box-shadow: 0 30px 70px rgba(11,37,64,0.18);
+        width: 100%;
+        max-width: 460px;
+        padding: 1.8rem;
+        animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      .modal-content.new-reserva-modal {
+        max-width: 520px;
+      }
+      @keyframes slideUp {
+        from { transform: translateY(30px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+      }
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 1rem;
+        margin-bottom: 1.2rem;
+      }
+      .modal-header h2 {
+        margin: 0.2rem 0;
+        font-family: 'Playfair Display', serif;
+        color: var(--navy-900);
+        font-size: 1.45rem;
+      }
+      .modal-header .section-desc {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.8rem;
+      }
+      .close-btn {
+        background: none;
+        border: none;
+        font-size: 1.8rem;
+        color: var(--muted);
+        cursor: pointer;
+        line-height: 1;
+      }
+      
+      .modal-form-grid { display: grid; gap: 1rem; }
+      .form-row-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; }
+      .form-label { display: grid; gap: .38rem; font-size: .78rem; font-weight: 700; color: var(--navy-700); }
+      
+      /* Tarjetas de Resumen y Pago */
+      .summary-card, .payment-details-card {
+        background: var(--cream-50);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 1.1rem;
+      }
+      .summary-card h4, .payment-details-card h4 {
+        margin: 0 0 0.8rem;
+        color: var(--navy-900);
+        font-family: 'Playfair Display', serif;
+        font-size: 0.95rem;
+        border-bottom: 1px solid rgba(11,37,64,0.06);
+        padding-bottom: 0.4rem;
+      }
+      .summary-row, .detail-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.45rem;
+        font-size: 0.84rem;
+      }
+      .summary-row span, .detail-row span {
+        color: var(--muted);
+      }
+      .summary-row strong, .detail-row strong {
+        color: var(--navy-900);
+      }
+      .divider {
+        height: 1px;
+        background: var(--border);
+        margin: 0.7rem 0;
+      }
+      .summary-row.total, .detail-row.total {
+        margin-bottom: 0;
+        padding-top: 0.2rem;
+      }
+      .summary-row.total span, .detail-row.total span {
+        font-weight: 700;
+        color: var(--navy-900);
+      }
+      .total-monto {
+        font-size: 1.3rem;
+        color: var(--gold-500);
+        font-family: 'Playfair Display', serif;
+      }
+      
+      .payment-badge {
+        margin-top: 1.2rem;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        background: var(--cream-50);
+        border: 1px solid var(--border);
+        padding: 0.8rem 1rem;
+        border-radius: 12px;
+      }
+      .lock-icon { font-size: 1.1rem; color: var(--gold-500); }
+      .payment-badge small { color: var(--muted); font-size: 0.74rem; font-weight: 500; line-height: 1.3; }
+
+      .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        padding-top: 1.2rem;
+        border-top: 1px solid var(--border);
+        margin-top: 0.4rem;
+      }
+      .note { margin: 0; color: #8A1E18; font-size: 0.76rem; font-weight: 600; }
     `
   ]
 })
@@ -308,6 +557,7 @@ export class ReservasClienteComponent implements OnInit {
   private readonly api = inject(ApiService);
   private readonly auth = inject(AuthService);
   private readonly fb = inject(FormBuilder);
+  private readonly route = inject(ActivatedRoute);
 
   habitaciones: Habitacion[] = [];
   reservas: Reserva[] = [];
@@ -320,6 +570,15 @@ export class ReservasClienteComponent implements OnInit {
   mensaje = "";
   error = "";
 
+  // Modal de Nueva / Editar Reserva
+  mostrarModalNuevaReserva = false;
+
+  // Modal de Pago
+  mostrarModalPago = false;
+  reservaParaPagar: Reserva | null = null;
+  metodoPagoSimulado = "Tarjeta";
+  pagandoSimulado = false;
+
   readonly form = this.fb.group({
     id_habitacion: [null as number | null, [Validators.required]],
     fecha_ingreso: ["", [Validators.required]],
@@ -330,6 +589,15 @@ export class ReservasClienteComponent implements OnInit {
   ngOnInit(): void {
     this.cargarHabitaciones();
     this.cargarHuespedActual();
+
+    // Capturar QueryParam de autoselección de habitación
+    this.route.queryParams.subscribe(params => {
+      const roomParam = params['habitacion'];
+      if (roomParam) {
+        this.form.patchValue({ id_habitacion: Number(roomParam) });
+        this.abrirModalNuevaReserva();
+      }
+    });
   }
 
   get habitacionesDisponibles(): Habitacion[] {
@@ -453,8 +721,8 @@ export class ReservasClienteComponent implements OnInit {
     request$.subscribe({
       next: () => {
         this.guardando = false;
-        this.mensaje = this.editando ? "Reserva actualizada." : "Reserva creada.";
-        this.cancelarEdicion();
+        this.mensaje = this.editando ? "Reserva actualizada con éxito." : "Reserva creada de forma pendiente. Por favor proceda al pago para confirmarla.";
+        this.cerrarModalNuevaReserva();
         this.cargarReservas();
       },
       error: () => {
@@ -475,8 +743,20 @@ export class ReservasClienteComponent implements OnInit {
       cantidad_noches: r.CANTIDAD_NOCHES || this.calcularNoches(r.FECHA_INGRESO, r.FECHA_SALIDA)
     });
 
+    this.mostrarModalNuevaReserva = true;
     this.error = "";
     this.mensaje = "";
+  }
+
+  abrirModalNuevaReserva(): void {
+    this.mostrarModalNuevaReserva = true;
+    this.error = "";
+    this.mensaje = "";
+  }
+
+  cerrarModalNuevaReserva(): void {
+    this.mostrarModalNuevaReserva = false;
+    this.cancelarEdicion();
   }
 
   cancelarEdicion(): void {
@@ -485,70 +765,75 @@ export class ReservasClienteComponent implements OnInit {
     this.form.reset({ id_habitacion: null, fecha_ingreso: "", fecha_salida: "", cantidad_noches: 1 });
   }
 
+  abrirModalPago(r: Reserva): void {
+    this.reservaParaPagar = r;
+    this.metodoPagoSimulado = "Tarjeta";
+    this.mostrarModalPago = true;
+    this.error = "";
+    this.mensaje = "";
+  }
+
+  cerrarModalPago(): void {
+    this.mostrarModalPago = false;
+    this.reservaParaPagar = null;
+  }
+
+  procesarPagoSimulado(): void {
+    if (!this.reservaParaPagar) return;
+    this.pagandoSimulado = true;
+    this.error = "";
+
+    this.api.post(`/reservas/${this.reservaParaPagar.ID_RESERVA}/pagar`, { metodo_pago: this.metodoPagoSimulado }).subscribe({
+      next: () => {
+        this.pagandoSimulado = false;
+        this.mensaje = `¡Transacción procesada correctamente! La reserva #${this.reservaParaPagar!.ID_RESERVA} ha sido CONFIRMADA.`;
+        this.cerrarModalPago();
+        this.cargarReservas();
+      },
+      error: (err) => {
+        this.pagandoSimulado = false;
+        this.error = err?.error?.message || "No se pudo procesar la transacción bancaria.";
+        this.cerrarModalPago();
+      }
+    });
+  }
+
   cancelarReserva(r: Reserva): void {
-    if (!this.idHuespedActual) return;
-    if (this.normalizarEstado(r.ESTADO) !== "PENDIENTE") {
-      this.error = "Solo puedes cancelar reservas en estado pendiente.";
-      return;
-    }
-
-    const ok = confirm(`Se cancelara la reserva #${r.ID_RESERVA}. Deseas continuar?`);
+    const ok = confirm(`¿Deseas cancelar la reserva ${this.formatearCodigoReserva(r.ID_RESERVA)}? Esta acción no se puede deshacer.`);
     if (!ok) return;
-
-    const payload = {
-      fecha_ingreso: this.aFechaInput(r.FECHA_INGRESO),
-      fecha_salida: this.aFechaInput(r.FECHA_SALIDA),
-      estado: "CANCELADA",
-      id_huesped: this.idHuespedActual,
-      id_habitacion: r.ID_HABITACION || null,
-      precio_noche: Number(r.PRECIO_NOCHE || 0),
-      cantidad_noches: Number(r.CANTIDAD_NOCHES || this.calcularNoches(r.FECHA_INGRESO, r.FECHA_SALIDA) || 1),
-      total: Number(r.TOTAL || r.SUBTOTAL || 0)
-    };
 
     this.error = "";
     this.mensaje = "";
 
-    this.api.put(`/reservas/${r.ID_RESERVA}`, payload).subscribe({
+    this.api.post(`/reservas/${r.ID_RESERVA}/cancelar`, {}).subscribe({
       next: () => {
-        this.mensaje = "Reserva cancelada.";
+        this.mensaje = "Reserva cancelada correctamente.";
         this.cargarReservas();
       },
-      error: () => {
-        this.error = "No se pudo cancelar la reserva.";
+      error: (err) => {
+        this.error = err?.error?.message || "No se pudo cancelar la reserva.";
       }
     });
   }
+
   finalizarReserva(r: Reserva): void {
-    if (!this.idHuespedActual) return;
-
-    const ok = confirm(`¿Deseas marcar la reserva #${r.ID_RESERVA} como FINALIZADA para poder evaluarla?`);
+    const ok = confirm(`¿Deseas finalizar la estancia de la reserva ${this.formatearCodigoReserva(r.ID_RESERVA)}?`);
     if (!ok) return;
-
-    const payload = {
-      fecha_ingreso: this.aFechaInput(r.FECHA_INGRESO),
-      fecha_salida: this.aFechaInput(r.FECHA_SALIDA),
-      estado: "FINALIZADA",
-      id_huesped: this.idHuespedActual,
-      id_habitacion: r.ID_HABITACION || null,
-      precio_noche: Number(r.PRECIO_NOCHE || 0),
-      cantidad_noches: Number(r.CANTIDAD_NOCHES || this.calcularNoches(r.FECHA_INGRESO, r.FECHA_SALIDA) || 1),
-      total: Number(r.TOTAL || r.SUBTOTAL || 0)
-    };
 
     this.error = "";
     this.mensaje = "";
 
-    this.api.put(`/reservas/${r.ID_RESERVA}`, payload).subscribe({
+    this.api.post(`/reservas/${r.ID_RESERVA}/finalizar`, {}).subscribe({
       next: () => {
-        this.mensaje = "Reserva finalizada correctamente. Ahora puedes evaluarla en la sección de Encuestas.";
+        this.mensaje = "Estadía finalizada correctamente. ¡Gracias por preferir nuestro Resort!";
         this.cargarReservas();
       },
-      error: () => {
-        this.error = "No se pudo finalizar la reserva.";
+      error: (err) => {
+        this.error = err?.error?.message || "No se pudo finalizar la reserva.";
       }
     });
   }
+
   totalFormulario(precioNoche: number): number {
     return Number(precioNoche || 0) * this.obtenerNochesFormulario();
   }
@@ -579,5 +864,10 @@ export class ReservasClienteComponent implements OnInit {
 
   esHabitacionReservaEditando(idHabitacion: number): boolean {
     return this.editando && this.reservaEditando?.ID_HABITACION === idHabitacion;
+  }
+
+  formatearCodigoReserva(id: number): string {
+    if (!id) return "";
+    return `RES-${String(id).padStart(4, "0")}`;
   }
 }

@@ -1,4 +1,4 @@
-﻿import { CommonModule } from "@angular/common";
+import { CommonModule } from "@angular/common";
 import { Component, OnInit, inject } from "@angular/core";
 import { FormBuilder, ReactiveFormsModule, Validators } from "@angular/forms";
 import { firstValueFrom } from "rxjs";
@@ -41,17 +41,6 @@ interface PerfilMongo {
   template: `
     <section class="perfil-container">
 
-      <!-- Top Bar: solo el badge de ultima conexion, alineado a la derecha -->
-      <div class="top-nav-row">
-        <div></div>
-        <div class="connection-badge">
-          <i class="icon-clock"></i>
-          <div>
-            <small>Ultima conexion</small>
-            <strong>{{ formatearFecha(ultimaConexion) }}</strong>
-          </div>
-        </div>
-      </div>
 
       <!-- Main Title -->
       <div class="title-block">
@@ -78,7 +67,7 @@ interface PerfilMongo {
             <div class="profile-card">
               <h2 class="card-title">Datos personales</h2>
 
-              <div class="form-inputs-stack">
+              <div class="form-inputs-grid">
                 <div class="form-field-row">
                   <label><i class="icon-user"></i> Nombres</label>
                   <input type="text" formControlName="nombres" placeholder="Ana Maria" />
@@ -104,7 +93,7 @@ interface PerfilMongo {
                   <input type="text" formControlName="numeroDocumento" />
                 </div>
 
-                <div class="form-field-row">
+                <div class="form-field-row span-2">
                   <label><i class="icon-mail"></i> Correo electronico</label>
                   <input type="email" formControlName="correo" />
                 </div>
@@ -328,26 +317,8 @@ interface PerfilMongo {
         padding: 2.5rem 1.5rem;
       }
 
-      .top-nav-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 0.5rem;
-      }
-
-      .connection-badge {
-        display: flex;
-        align-items: center;
-        gap: 0.6rem;
-        background: var(--white);
-        border: 1px solid var(--border-color);
-        padding: 0.6rem 1.2rem;
-        border-radius: 12px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.02);
-      }
-      .connection-badge i { color: var(--gold-theme); font-size: 1.1rem; }
-      .connection-badge small, .info-block-item small { display: block; font-size: 0.75rem; color: var(--text-muted); }
-      .connection-badge strong, .info-block-item strong { font-size: 0.85rem; color: var(--blue-dark); font-weight: 600; font-family: 'Inter', system-ui, sans-serif; }
+      .info-block-item small { display: block; font-size: 0.75rem; color: var(--text-muted); }
+      .info-block-item strong { font-size: 0.85rem; color: var(--blue-dark); font-weight: 600; font-family: 'Inter', system-ui, sans-serif; }
 
       .title-block { margin-bottom: 2rem; }
       .title-block h1 {
@@ -400,17 +371,21 @@ interface PerfilMongo {
         margin-bottom: 0;
       }
 
-      .form-inputs-stack {
-        display: flex;
-        flex-direction: column;
-        gap: 1.1rem;
+      .form-inputs-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.2rem;
+      }
+      .form-inputs-grid .span-2 {
+        grid-column: span 2;
       }
 
       .form-field-row {
-        display: grid;
-        grid-template-columns: minmax(140px, 180px) minmax(0, 1fr);
-        align-items: center;
-        gap: 1rem;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.4rem;
+        width: 100%;
       }
       .form-field-row label {
         font-size: 0.88rem;
@@ -526,9 +501,9 @@ interface PerfilMongo {
 
       .form-action-buttons {
         display: flex;
-        justify-content: flex-end;
+        justify-content: center;
         gap: 1rem;
-        margin-top: 0.5rem;
+        margin-top: 1rem;
       }
       .btn {
         padding: 0.7rem 1.5rem;
@@ -546,10 +521,10 @@ interface PerfilMongo {
         font-size: 0.8rem;
         padding: 0.45rem 0.85rem;
       }
-      .btn-filled { background-color: var(--gold-theme); color: var(--white); }
-      .btn-filled:hover { background-color: var(--gold-dark); }
-      .btn-outline { background-color: var(--white); color: var(--text-muted); border: 1px solid var(--border-color); }
-      .btn-outline:hover { background-color: #F8FAFC; color: var(--blue-text); }
+      .btn-filled { background-color: var(--gold-theme); color: var(--blue-dark); font-weight: 700; box-shadow: 0 4px 14px rgba(201,162,39,0.25); }
+      .btn-filled:hover { background-color: var(--gold-dark); transform: translateY(-1px); }
+      .btn-outline { background-color: transparent; color: var(--blue-text); border: 1px solid var(--gold-theme); font-weight: 700; }
+      .btn-outline:hover { background-color: rgba(201,162,39,0.05); }
 
       .phones-stack {
         display: flex;

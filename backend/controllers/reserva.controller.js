@@ -13,19 +13,19 @@ async function listReservas(req, res, next) {
   try {
     connection = await getOracleConnection();
     const result = await connection.execute(
-          `SELECT R.ID_RESERVA, R.FECHA_RESERVA, R.FECHA_INGRESO, R.FECHA_SALIDA,
-            INITCAP(R.ESTADO) AS ESTADO,
-            R.TOTAL,
+      `SELECT R.ID_RESERVA, R.FECHA_RESERVA, R.FECHA_INGRESO, R.FECHA_SALIDA,
+              INITCAP(R.ESTADO) AS ESTADO,
+              R.TOTAL,
               R.ID_HUESPED, H.NOMBRES || ' ' || H.APELLIDOS AS HUESPED,
-            D.ID_HABITACION,
-            HB.NUMERO AS NUMERO_HABITACION,
-            D.PRECIO_NOCHE,
-            D.CANTIDAD_NOCHES,
-            D.SUBTOTAL
+              D.ID_HABITACION,
+              HB.NUMERO AS NUMERO_HABITACION,
+              D.PRECIO_NOCHE,
+              D.CANTIDAD_NOCHES,
+              D.SUBTOTAL
        FROM RESERVA R
        INNER JOIN HUESPED H ON H.ID_HUESPED = R.ID_HUESPED
-           LEFT JOIN DETALLE_RESERVA D ON D.ID_RESERVA = R.ID_RESERVA
-           LEFT JOIN HABITACION HB ON HB.ID_HABITACION = D.ID_HABITACION
+       LEFT JOIN DETALLE_RESERVA D ON D.ID_RESERVA = R.ID_RESERVA
+       LEFT JOIN HABITACION HB ON HB.ID_HABITACION = D.ID_HABITACION
        ORDER BY R.ID_RESERVA`,
       [],
       { outFormat }
@@ -50,7 +50,7 @@ async function createReserva(req, res, next) {
       precio_noche,
       cantidad_noches,
       total,
-      metodo_pago // Campo opcional para simular el pago al reservar
+      metodo_pago
     } = req.body;
     connection = await getOracleConnection();
 
@@ -58,7 +58,7 @@ async function createReserva(req, res, next) {
     const subtotal = Number(precio_noche || 0) * nights;
     const totalValue = total || subtotal;
 
-    // 1. Insertar en RESERVA (con autoCommit: false)
+    // 1. Insertar en RESERVA
     await connection.execute(
       `INSERT INTO RESERVA (ID_RESERVA, FECHA_RESERVA, FECHA_INGRESO, FECHA_SALIDA, ESTADO, ID_HUESPED, TOTAL)
        VALUES (SEQ_RESERVA.NEXTVAL, SYSDATE, TO_DATE(:fecha_ingreso, 'YYYY-MM-DD'), TO_DATE(:fecha_salida, 'YYYY-MM-DD'), :estado, :id_huesped, :total)`,
@@ -91,28 +91,28 @@ async function createReserva(req, res, next) {
       );
     }
 
-    // 3. Si se proporciona método de pago, simular el pago (crear Factura y Pago)
+    // 3. Crear siempre la Factura en estado PENDIENTE por defecto
+    const subtotalFactura = Number((totalValue / 1.18).toFixed(2));
+    const igvFactura = Number((totalValue - subtotalFactura).toFixed(2));
+
+    await connection.execute(
+      `INSERT INTO FACTURA (ID_FACTURA, ID_RESERVA, FECHA_EMISION, SUBTOTAL, IGV, TOTAL, ESTADO_PAGO)
+       VALUES (SEQ_FACTURA.NEXTVAL, :id_reserva, SYSDATE, :subtotal, :igv, :total, :estado_pago)`,
+      {
+        id_reserva: reservaId,
+        subtotal: subtotalFactura,
+        igv: igvFactura,
+        total: totalValue,
+        estado_pago: metodo_pago ? 'PAGADO' : 'PENDIENTE'
+      },
+      { autoCommit: false }
+    );
+
+    // 4. Si se proporciona método de pago (flujo directo), crear el pago
     if (metodo_pago) {
-      const subtotalFactura = Number((totalValue / 1.18).toFixed(2));
-      const igvFactura = Number((totalValue - subtotalFactura).toFixed(2));
-
-      // Insertar en FACTURA
-      await connection.execute(
-        `INSERT INTO FACTURA (ID_FACTURA, ID_RESERVA, FECHA_EMISION, SUBTOTAL, IGV, TOTAL, ESTADO_PAGO)
-         VALUES (SEQ_FACTURA.NEXTVAL, :id_reserva, SYSDATE, :subtotal, :igv, :total, 'PAGADO')`,
-        {
-          id_reserva: reservaId,
-          subtotal: subtotalFactura,
-          igv: igvFactura,
-          total: totalValue
-        },
-        { autoCommit: false }
-      );
-
       const facturaIdResult = await connection.execute("SELECT SEQ_FACTURA.CURRVAL AS ID_FACTURA FROM DUAL", [], { outFormat });
       const facturaId = facturaIdResult.rows[0].ID_FACTURA;
 
-      // Insertar en PAGO
       await connection.execute(
         `INSERT INTO PAGO (ID_PAGO, ID_FACTURA, FECHA_PAGO, METODO_PAGO, MONTO)
          VALUES (SEQ_PAGO.NEXTVAL, :id_factura, SYSDATE, :metodo_pago, :monto)`,
@@ -126,15 +126,10 @@ async function createReserva(req, res, next) {
     }
 
     await connection.commit();
-
-    res.status(201).json({ message: "Reserva creada exitosamente y pago registrado", id_reserva: reservaId });
+    res.status(201).json({ message: "Reserva creada exitosamente", id_reserva: reservaId });
   } catch (error) {
     if (connection) {
-      try {
-        await connection.rollback();
-      } catch (err) {
-        // ignore
-      }
+      try { await connection.rollback(); } catch (err) {}
     }
     next(error);
   } finally {
@@ -161,22 +156,6 @@ async function updateReserva(req, res, next) {
     const nights = Number(cantidad_noches || 1);
     const subtotal = Number(precio_noche || 0) * nights;
     const normalizedEstadoValue = normalizeEstado(estado);
-
-    if (normalizedEstadoValue === "CANCELADA") {
-      const currentResult = await connection.execute(
-        "SELECT ESTADO FROM RESERVA WHERE ID_RESERVA = :id",
-        { id: Number(id) },
-        { outFormat }
-      );
-
-      if (currentResult.rows.length === 0) {
-        return res.status(404).json({ message: "Reserva no encontrada" });
-      }
-
-      if (normalizeEstado(currentResult.rows[0].ESTADO) !== "PENDIENTE") {
-        return res.status(400).json({ message: "Solo se pueden cancelar reservas pendientes" });
-      }
-    }
 
     const result = await connection.execute(
       `UPDATE RESERVA
@@ -251,11 +230,7 @@ async function updateReserva(req, res, next) {
     res.json({ message: "Reserva actualizada" });
   } catch (error) {
     if (connection) {
-      try {
-        await connection.rollback();
-      } catch (err) {
-        // ignore
-      }
+      try { await connection.rollback(); } catch (err) {}
     }
     next(error);
   } finally {
@@ -294,9 +269,239 @@ async function deleteReserva(req, res, next) {
   }
 }
 
+async function pagarReserva(req, res, next) {
+  let connection;
+  try {
+    const { id } = req.params;
+    const { metodo_pago } = req.body;
+    if (!metodo_pago) {
+      return res.status(400).json({ message: "metodo_pago es requerido" });
+    }
+
+    connection = await getOracleConnection();
+
+    let idHuespedReserva;
+    if (req.user.role === "CLIENTE") {
+      const huespedResult = await connection.execute(
+        "SELECT ID_HUESPED FROM HUESPED WHERE ID_USUARIO = :id_usuario",
+        { id_usuario: req.user.id },
+        { outFormat }
+      );
+      if (huespedResult.rows.length === 0) {
+        return res.status(403).json({ message: "Huesped no registrado" });
+      }
+      idHuespedReserva = huespedResult.rows[0].ID_HUESPED;
+    }
+
+    const reservaResult = await connection.execute(
+      "SELECT ID_HUESPED, ESTADO, TOTAL FROM RESERVA WHERE ID_RESERVA = :id",
+      { id: Number(id) },
+      { outFormat }
+    );
+    if (reservaResult.rows.length === 0) {
+      return res.status(404).json({ message: "Reserva no encontrada" });
+    }
+    const reserva = reservaResult.rows[0];
+
+    if (req.user.role === "CLIENTE" && Number(reserva.ID_HUESPED) !== Number(idHuespedReserva)) {
+      return res.status(403).json({ message: "No tienes permiso para pagar esta reserva" });
+    }
+
+    if (String(reserva.ESTADO).toUpperCase() !== "PENDIENTE") {
+      return res.status(400).json({ message: "Solo se pueden pagar reservas pendientes" });
+    }
+
+    let facturaResult = await connection.execute(
+      "SELECT ID_FACTURA, TOTAL FROM FACTURA WHERE ID_RESERVA = :id_reserva",
+      { id_reserva: Number(id) },
+      { outFormat }
+    );
+
+    let facturaId;
+    let totalFactura = reserva.TOTAL;
+
+    if (facturaResult.rows.length === 0) {
+      const subtotal = Number((reserva.TOTAL / 1.18).toFixed(2));
+      const igv = Number((reserva.TOTAL - subtotal).toFixed(2));
+      await connection.execute(
+        `INSERT INTO FACTURA (ID_FACTURA, ID_RESERVA, FECHA_EMISION, SUBTOTAL, IGV, TOTAL, ESTADO_PAGO)
+         VALUES (SEQ_FACTURA.NEXTVAL, :id_reserva, SYSDATE, :subtotal, :igv, :total, 'PENDIENTE')`,
+        {
+          id_reserva: Number(id),
+          subtotal,
+          igv,
+          total: reserva.TOTAL
+        },
+        { autoCommit: false }
+      );
+      const seqResult = await connection.execute("SELECT SEQ_FACTURA.CURRVAL AS ID_FACTURA FROM DUAL", [], { outFormat });
+      facturaId = seqResult.rows[0].ID_FACTURA;
+    } else {
+      facturaId = facturaResult.rows[0].ID_FACTURA;
+      totalFactura = facturaResult.rows[0].TOTAL;
+    }
+
+    await connection.execute(
+      `INSERT INTO PAGO (ID_PAGO, ID_FACTURA, FECHA_PAGO, METODO_PAGO, MONTO)
+       VALUES (SEQ_PAGO.NEXTVAL, :id_factura, SYSDATE, :metodo_pago, :monto)`,
+      {
+        id_factura: facturaId,
+        metodo_pago,
+        monto: totalFactura
+      },
+      { autoCommit: false }
+    );
+
+    await connection.execute(
+      "UPDATE FACTURA SET ESTADO_PAGO = 'PAGADO' WHERE ID_FACTURA = :id_factura",
+      { id_factura: facturaId },
+      { autoCommit: false }
+    );
+
+    await connection.execute(
+      "UPDATE RESERVA SET ESTADO = 'CONFIRMADA' WHERE ID_RESERVA = :id",
+      { id: Number(id) },
+      { autoCommit: false }
+    );
+
+    await connection.commit();
+    res.json({ message: "Pago registrado exitosamente y reserva confirmada", id_reserva: id });
+  } catch (error) {
+    if (connection) {
+      try { await connection.rollback(); } catch (err) {}
+    }
+    next(error);
+  } finally {
+    if (connection) await connection.close();
+  }
+}
+
+async function cancelarReserva(req, res, next) {
+  let connection;
+  try {
+    const { id } = req.params;
+    connection = await getOracleConnection();
+
+    let idHuespedReserva;
+    if (req.user.role === "CLIENTE") {
+      const huespedResult = await connection.execute(
+        "SELECT ID_HUESPED FROM HUESPED WHERE ID_USUARIO = :id_usuario",
+        { id_usuario: req.user.id },
+        { outFormat }
+      );
+      if (huespedResult.rows.length === 0) {
+        return res.status(403).json({ message: "Huesped no registrado" });
+      }
+      idHuespedReserva = huespedResult.rows[0].ID_HUESPED;
+    }
+
+    const reservaResult = await connection.execute(
+      "SELECT ID_HUESPED, ESTADO FROM RESERVA WHERE ID_RESERVA = :id",
+      { id: Number(id) },
+      { outFormat }
+    );
+    if (reservaResult.rows.length === 0) {
+      return res.status(404).json({ message: "Reserva no encontrada" });
+    }
+    const reserva = reservaResult.rows[0];
+
+    if (req.user.role === "CLIENTE" && Number(reserva.ID_HUESPED) !== Number(idHuespedReserva)) {
+      return res.status(403).json({ message: "No tienes permiso para cancelar esta reserva" });
+    }
+
+    const estadoActual = String(reserva.ESTADO).toUpperCase();
+
+    if (estadoActual === "CANCELADA" || estadoActual === "FINALIZADA") {
+      return res.status(400).json({ message: `No se puede cancelar una reserva en estado ${estadoActual}` });
+    }
+
+    await connection.execute(
+      "UPDATE RESERVA SET ESTADO = 'CANCELADA' WHERE ID_RESERVA = :id",
+      { id: Number(id) },
+      { autoCommit: false }
+    );
+
+    await connection.execute(
+      "UPDATE FACTURA SET ESTADO_PAGO = 'ANULADO' WHERE ID_RESERVA = :id_reserva",
+      { id_reserva: Number(id) },
+      { autoCommit: false }
+    );
+
+    await connection.commit();
+    res.json({ message: "Reserva cancelada exitosamente" });
+  } catch (error) {
+    if (connection) {
+      try { await connection.rollback(); } catch (err) {}
+    }
+    next(error);
+  } finally {
+    if (connection) await connection.close();
+  }
+}
+
+async function finalizarReserva(req, res, next) {
+  let connection;
+  try {
+    const { id } = req.params;
+    connection = await getOracleConnection();
+
+    let idHuespedReserva;
+    if (req.user.role === "CLIENTE") {
+      const huespedResult = await connection.execute(
+        "SELECT ID_HUESPED FROM HUESPED WHERE ID_USUARIO = :id_usuario",
+        { id_usuario: req.user.id },
+        { outFormat }
+      );
+      if (huespedResult.rows.length === 0) {
+        return res.status(403).json({ message: "Huesped no registrado" });
+      }
+      idHuespedReserva = huespedResult.rows[0].ID_HUESPED;
+    }
+
+    const reservaResult = await connection.execute(
+      "SELECT ID_HUESPED, ESTADO FROM RESERVA WHERE ID_RESERVA = :id",
+      { id: Number(id) },
+      { outFormat }
+    );
+    if (reservaResult.rows.length === 0) {
+      return res.status(404).json({ message: "Reserva no encontrada" });
+    }
+    const reserva = reservaResult.rows[0];
+
+    if (req.user.role === "CLIENTE" && Number(reserva.ID_HUESPED) !== Number(idHuespedReserva)) {
+      return res.status(403).json({ message: "No tienes permiso para finalizar esta reserva" });
+    }
+
+    const estadoActual = String(reserva.ESTADO).toUpperCase();
+
+    if (estadoActual !== "CONFIRMADA") {
+      return res.status(400).json({ message: "Solo se pueden finalizar reservas confirmadas (pagadas)" });
+    }
+
+    await connection.execute(
+      "UPDATE RESERVA SET ESTADO = 'FINALIZADA' WHERE ID_RESERVA = :id",
+      { id: Number(id) },
+      { autoCommit: false }
+    );
+
+    await connection.commit();
+    res.json({ message: "Reserva finalizada exitosamente" });
+  } catch (error) {
+    if (connection) {
+      try { await connection.rollback(); } catch (err) {}
+    }
+    next(error);
+  } finally {
+    if (connection) await connection.close();
+  }
+}
+
 module.exports = {
   listReservas,
   createReserva,
   updateReserva,
-  deleteReserva
+  deleteReserva,
+  pagarReserva,
+  cancelarReserva,
+  finalizarReserva
 };

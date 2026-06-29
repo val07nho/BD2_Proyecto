@@ -81,34 +81,34 @@ interface FacturaView extends Factura {
             <table>
               <thead>
                 <tr>
-                  <th>ID</th>
-                  <th>Reserva</th>
-                  <th>Emisión</th>
+                  <th>N° Comprobante</th>
+                  <th>Estadía Asociada</th>
+                  <th>Fecha Emisión</th>
                   <th>Habitación</th>
                   <th>Subtotal</th>
-                  <th>IGV</th>
-                  <th>Total</th>
-                  <th>Estado</th>
-                  <th>Acción</th>
+                  <th>IGV (18%)</th>
+                  <th>Total Facturado</th>
+                  <th>Estado Pago</th>
+                  <th>Detalles</th>
                 </tr>
               </thead>
               <tbody>
                 @for (factura of facturas; track factura.ID_FACTURA) {
                   <tr>
-                    <td>#{{ factura.ID_FACTURA }}</td>
-                    <td>#{{ factura.ID_RESERVA }}</td>
-                    <td>{{ factura.FECHA_EMISION | date: 'yyyy-MM-dd' }}</td>
-                    <td>{{ factura.reserva?.NUMERO_HABITACION || '-' }}</td>
+                    <td class="res-code">{{ formatearCodigoFactura(factura.ID_FACTURA) }}</td>
+                    <td class="res-code">{{ formatearCodigoReserva(factura.ID_RESERVA) }}</td>
+                    <td>{{ factura.FECHA_EMISION | date: 'dd MMM, yyyy' }}</td>
+                    <td><strong>{{ factura.reserva?.NUMERO_HABITACION ? 'Hab. N° ' + factura.reserva?.NUMERO_HABITACION : '-' }}</strong></td>
                     <td>S/ {{ (factura.SUBTOTAL || 0) | number: '1.2-2' }}</td>
                     <td>S/ {{ (factura.IGV || 0) | number: '1.2-2' }}</td>
-                    <td><strong>S/ {{ (factura.TOTAL || 0) | number: '1.2-2' }}</strong></td>
+                    <td class="amount">S/ {{ (factura.TOTAL || 0) | number: '1.2-2' }}</td>
                     <td>
                       <span class="pill" [class.pagado]="normalizar(factura.ESTADO_PAGO) === 'PAGADO'" [class.pendiente]="normalizar(factura.ESTADO_PAGO) === 'PENDIENTE'" [class.anulado]="normalizar(factura.ESTADO_PAGO) === 'ANULADO'">
-                        {{ factura.ESTADO_PAGO || 'PENDIENTE' }}
+                        {{ normalizar(factura.ESTADO_PAGO) === 'PAGADO' ? 'PAGADO' : 'PENDIENTE' }}
                       </span>
                     </td>
                     <td>
-                      <button class="btn action-btn" type="button" (click)="verDetalle(factura.ID_FACTURA)">Detalle</button>
+                      <button class="btn action-btn" type="button" (click)="verDetalle(factura.ID_FACTURA)">Ver Detalle</button>
                     </td>
                   </tr>
                 }
@@ -123,8 +123,10 @@ interface FacturaView extends Factura {
         <div class="modal-overlay" (click)="cerrarModal()">
           <div class="modal-card card detailed-invoice-modal" (click)="$event.stopPropagation()">
             <div class="modal-header">
-              <h2>Comprobante de Pago Detallado</h2>
-              <span class="invoice-number">Factura #{{ facturaDetalle.factura.ID_FACTURA }}</span>
+              <div>
+                <h2>Comprobante de Pago Detallado</h2>
+                <span class="invoice-number">{{ formatearCodigoFactura(facturaDetalle.factura.ID_FACTURA) }}</span>
+              </div>
               <button class="close-btn" type="button" (click)="cerrarModal()">&times;</button>
             </div>
             
@@ -295,6 +297,8 @@ interface FacturaView extends Factura {
       h3 { margin: 0; color: var(--navy-900); font-family: 'Playfair Display', serif; }
       .btn { border: none; border-radius: 8px; padding: .54rem .84rem; font-size: .8rem; font-weight: 700; cursor: pointer; }
       .btn.ghost { background: transparent; color: var(--navy-700); border: 1px solid var(--border); }
+      .btn.primary { background: var(--gold-500); color: var(--navy-900); }
+      .btn.primary:hover { background: var(--gold-300); }
 
       .table-wrap { overflow-x: auto; }
       table { width: 100%; border-collapse: collapse; }
@@ -308,13 +312,17 @@ interface FacturaView extends Factura {
       .alert.error { border-radius: 10px; padding: .72rem .92rem; background: rgba(179,38,30,.1); color: #8A1E18; border: 1px solid rgba(179,38,30,.25); }
       
       .action-btn {
-        background: var(--navy-700);
-        color: var(--white);
-        padding: 0.35rem 0.65rem;
-        font-size: 0.76rem;
+        background: transparent;
+        border: 1px solid var(--gold-300);
+        color: var(--gold-500);
+        padding: 0.38rem 0.7rem;
+        font-size: 0.78rem;
+        border-radius: 8px;
+        transition: 0.2s;
       }
       .action-btn:hover {
-        background: var(--navy-900);
+        background: var(--gold-500);
+        color: var(--navy-900);
       }
       
       /* Modal Desglosado */
@@ -511,6 +519,16 @@ export class FacturasClienteComponent implements OnInit {
 
   normalizar(estado: string | undefined) {
     return String(estado || "PENDIENTE").toUpperCase();
+  }
+
+  formatearCodigoFactura(id: number | undefined): string {
+    if (!id) return "";
+    return `FAC-${String(id).padStart(4, "0")}`;
+  }
+
+  formatearCodigoReserva(id: number | undefined): string {
+    if (!id) return "";
+    return `RES-${String(id).padStart(4, "0")}`;
   }
 
   private async getData<T>(path: string) {

@@ -157,8 +157,8 @@ async function adquirirEvento(req, res, next) {
       return res.status(403).json({ message: "No tienes permiso para modificar esta reserva." });
     }
 
-    if (estado !== "PENDIENTE" && estado !== "CONFIRMADA") {
-      return res.status(400).json({ message: "Solo se pueden agregar eventos a reservas PENDIENTES o CONFIRMADAS." });
+    if (estado !== "PENDIENTE") {
+      return res.status(400).json({ message: "Solo se pueden agregar eventos a reservas PENDIENTES de pago." });
     }
 
     // Obtener costo y cupos del evento
@@ -282,10 +282,57 @@ async function adquirirEvento(req, res, next) {
   }
 }
 
+async function getMisEventos(req, res, next) {
+  let connection;
+  try {
+    connection = await getOracleConnection();
+
+    let idHuespedActual = null;
+    if (req.user.role === "CLIENTE") {
+      const huespedResult = await connection.execute(
+        "SELECT ID_HUESPED FROM HUESPED WHERE ID_USUARIO = :id_usuario",
+        { id_usuario: req.user.id },
+        { outFormat }
+      );
+      if (huespedResult.rows.length === 0) {
+        return res.json([]);
+      }
+      idHuespedActual = huespedResult.rows[0].ID_HUESPED;
+    }
+
+    let query = `
+      SELECT RE.ID_RESERVA_EVENTO, RE.CANTIDAD, RE.SUBTOTAL, 
+             E.NOMBRE AS EVENTO_NOMBRE, E.FECHA_EVENTO, RE.ID_RESERVA,
+             HB.NUMERO AS NUMERO_HABITACION, R.ESTADO AS RESERVA_ESTADO
+      FROM RESERVA_EVENTO RE
+      INNER JOIN EVENTO E ON E.ID_EVENTO = RE.ID_EVENTO
+      INNER JOIN RESERVA R ON R.ID_RESERVA = RE.ID_RESERVA
+      LEFT JOIN DETALLE_RESERVA D ON D.ID_RESERVA = R.ID_RESERVA
+      LEFT JOIN HABITACION HB ON HB.ID_HABITACION = D.ID_HABITACION
+    `;
+
+    const binds = {};
+    if (req.user.role === "CLIENTE") {
+      query += " WHERE R.ID_HUESPED = :id_huesped";
+      binds.id_huesped = idHuespedActual;
+    }
+
+    query += " ORDER BY RE.ID_RESERVA_EVENTO DESC";
+
+    const result = await connection.execute(query, binds, { outFormat });
+    res.json(result.rows);
+  } catch (error) {
+    next(error);
+  } finally {
+    if (connection) await connection.close();
+  }
+}
+
 module.exports = {
   listEventos,
   createEvento,
   updateEvento,
   deleteEvento,
-  adquirirEvento
+  adquirirEvento,
+  getMisEventos
 };
